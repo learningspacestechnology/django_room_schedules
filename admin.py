@@ -7,7 +7,7 @@ from room_schedules.models import Venue, Room
 class RoomInline(TabularInline):
     model = Room
     extra = 0
-    fields = ('name', 'artifax_id')
+    fields = ('name', 'artifax_id', 'o365_calendar_email')
 
 
 @admin.register(Venue)
@@ -19,7 +19,7 @@ class VenueAdmin(ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(ModelAdmin):
-    list_display = ('name', 'venue', 'artifax_id')
+    list_display = ('name', 'venue', 'artifax_id', 'o365_calendar_email')
     search_fields = ('name', 'venue__name')
     list_filter = ('venue',)
     list_select_related = ('venue',)
