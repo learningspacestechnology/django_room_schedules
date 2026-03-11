@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=1280">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="refresh" content="60">
     <title>{{ room.name }} – Edinburgh University Students' Association</title>
     <style>
@@ -50,13 +50,57 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Full-width colour bands that bleed behind #app to fill the screen edges */
+        .bg-bands {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            pointer-events: none;
+        }
+        .bg-bands .bg-header {
+            flex: 0 0 45vh;
+            transition: background-color 0.6s ease;
+        }
+        .bg-bands .bg-header.available { background: #2D7F44; }
+        .bg-bands .bg-header.warning   { background: #D16837; }
+        .bg-bands .bg-header.in-use    { background: #C40050; }
+        .bg-bands .bg-progress {
+            flex: 0 0 1.5vh;
+            background: #4C4C4C;
+            overflow: hidden;
+        }
+        .bg-bands .bg-bottom {
+            flex: 1;
+            background: #592F65;
+        }
+
+        /* Fixed-size canvas — scaled to fill screen height by JS */
+        #app {
             font-family: "Source Sans Pro", "Calibri", sans-serif;
             width: 1280px;
             height: 800px;
             overflow: hidden;
             color: #fff;
             line-height: 105%;
+            transform-origin: center center;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
         }
 
         /* ── Header (3-column: logo | venue/room/status | clock) ── */
@@ -69,6 +113,7 @@
             justify-content: center;
             padding: 0 40px;
             transition: background-color 0.6s ease;
+            flex-shrink: 0;
         }
         .header.available { background: #2D7F44; }
         .header.warning  { background: #D16837; }
@@ -172,10 +217,11 @@
         }
 
         /* ── Progress bar ── */
+        /* .progress-container is a transparent spacer — visual is in .bg-bands */
         .progress-container {
             width: 100%;
             height: 12px;
-            background: #4C4C4C;
+            flex-shrink: 0;
         }
         .progress-bar {
             height: 100%;
@@ -189,7 +235,7 @@
         /* ── Bottom section (800 - 360 - 12 = 428px) ── */
         .bottom {
             width: 100%;
-            height: 428px;
+            flex: 1;
             background: #592F65;
             display: flex;
             overflow: hidden;
@@ -311,6 +357,17 @@
 </head>
 <body>
 
+<!-- Full-width colour bands — bleed header/progress/bottom colours to screen edges -->
+<div class="bg-bands">
+    <div class="bg-header {% if is_available %}{% if is_warning %}warning{% else %}available{% endif %}{% else %}in-use{% endif %}"></div>
+    <div class="bg-progress">
+        <div class="progress-bar {% if is_available %}available-bar{% else %}in-use-bar{% endif %}" id="progressBar"></div>
+    </div>
+    <div class="bg-bottom"></div>
+</div>
+
+<div id="app">
+
     <!-- ── Header: logo | venue/room/status | clock ── -->
     <div class="header {% if is_available %}{% if is_warning %}warning{% else %}available{% endif %}{% else %}in-use{% endif %}" id="statusBanner">
         <div class="header-left">
@@ -346,10 +403,8 @@
         </div>
     </div>
 
-    <!-- ── Progress bar ── -->
-    <div class="progress-container">
-        <div class="progress-bar {% if is_available %}available-bar{% else %}in-use-bar{% endif %}" id="progressBar"></div>
-    </div>
+    <!-- ── Progress bar spacer (visual is in .bg-bands) ── -->
+    <div class="progress-container"></div>
 
     <!-- ── Bottom section ── -->
     <div class="bottom">
@@ -386,7 +441,21 @@
 
     </div>
 
+</div>
+
     <script>
+        // ── Scale #app to fill the viewport while preserving aspect ratio ──
+        const APP_W = 1280, APP_H = 800;
+        const appEl = document.getElementById("app");
+
+        function applyScale() {
+            const scale = window.innerHeight / APP_H;
+            appEl.style.transform = "scale(" + scale + ")";
+        }
+
+        applyScale();
+        window.addEventListener("resize", applyScale);
+
         // ── Server-provided timestamps ──
         const NOW_ISO           = "{{ now_iso }}";
         const CURRENT_EVT_START = "{{ current_event_start_iso }}";
