@@ -33,7 +33,7 @@ def _get_access_token():
         result = app.acquire_token_by_username_password(
             username=O365_DELEGATED_USERNAME,
             password=O365_DELEGATED_PASSWORD,
-            scopes=["https://graph.microsoft.com/Calendars.Read"],
+            scopes=["https://graph.microsoft.com/Calendars.ReadWrite"],
         )
     else:
         result = app.acquire_token_for_client(
@@ -98,3 +98,33 @@ def get_todays_events(room_email):
             "cancelled": item.get("isCancelled", False),
         })
     return results
+
+
+def create_adhoc_booking(room_email, start_dt, end_dt):
+    """Create an 'Adhoc Booking' event on the room's O365 calendar.
+
+    start_dt and end_dt are naive local datetimes (Europe/London).
+    Returns the new event's O365 id string.
+    """
+    token = _get_access_token()
+    h = httplib2.Http()
+    url = f"{GRAPH_API}/users/{room_email}/calendar/events"
+    body = json.dumps({
+        "subject": "Adhoc Booking",
+        "start": {"dateTime": start_dt.isoformat(), "timeZone": "Europe/London"},
+        "end":   {"dateTime": end_dt.isoformat(),   "timeZone": "Europe/London"},
+    })
+    response, content = h.request(
+        url,
+        method="POST",
+        body=body,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+    )
+    if response.status not in (200, 201):
+        raise RuntimeError(
+            f"Graph API error {response.status} creating adhoc booking for {room_email}: {content}"
+        )
+    return json.loads(content)["id"]

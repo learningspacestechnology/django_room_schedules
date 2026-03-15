@@ -1,8 +1,9 @@
 import datetime
 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
-
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_POST
 
 # Create your views here.
 from room_schedules.settings import HOUR_BREAK_POINT
@@ -149,3 +150,68 @@ def show_room_display(request, venue_id, room_id):
     }
 
     return render(request, "room_schedules/room_display.html", context)
+
+
+@csrf_protect
+@require_POST
+def book_adhoc(request, venue_id, room_id):
+    """Create an adhoc booking for a currently-free O365 room.
+
+    POST params:
+      duration_minutes: int, multiple of 5, 5–240  (0 means "until next booking")
+    """
+    from room_schedules.o365_requests import create_adhoc_booking
+
+    room = get_object_or_404(Room, pk=room_id)
+
+    if not room.allow_tablet_booking or not room.o365_calendar_email:
+        return JsonResponse({'error': 'Room does not support adhoc booking.'}, status=400)
+
+    now = datetime.datetime.now()
+
+    current_event = Event.objects.filter(
+        room=room, start_time__lte=now, end_time__gte=now, cancelled=False
+    ).first()
+    if current_event:
+        return JsonResponse({'error': 'Room is currently in use.'}, status=409)
+
+    try:
+        duration_minutes = int(request.POST.get('duration_minutes', 0))
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Invalid duration.'}, status=400)
+
+    MAX_MINUTES = 240
+    next_event = Event.objects.filter(
+        room=room, start_time__gt=now, cancelled=False
+    ).order_by('start_time').first()
+
+    if duration_minutes == 0:
+        # "Until next booking" — cap at 4 hours
+        if next_event:
+            end_dt = min(next_event.start_time, now + datetime.timedelta(minutes=MAX_MINUTES))
+        else:
+            end_dt = now + datetime.timedelta(minutes=MAX_MINUTES)
+    else:
+        if duration_minutes < 5 or duration_minutes > MAX_MINUTES or duration_minutes % 5 != 0:
+            return JsonResponse({'error': 'Duration must be a multiple of 5 between 5 and 240.'}, status=400)
+        end_dt = now + datetime.timedelta(minutes=duration_minutes)
+        if next_event and next_event.start_time < end_dt:
+            end_dt = next_event.start_time
+
+    start_dt = now.replace(second=0, microsecond=0)
+
+    try:
+        o365_id = create_adhoc_booking(room.o365_calendar_email, start_dt, end_dt)
+    except RuntimeError as e:
+        return JsonResponse({'error': str(e)}, status=502)
+
+    Event.objects.create(
+        name="Adhoc Booking",
+        room=room,
+        organiser="",
+        start_time=start_dt,
+        end_time=end_dt,
+        o365_event_id=o365_id,
+    )
+
+    return JsonResponse({'ok': True})

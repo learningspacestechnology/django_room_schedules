@@ -353,6 +353,117 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* ── Adhoc booking button ── */
+        .book-btn {
+            margin-top: 20px;
+            padding: 16px 40px;
+            font-size: 28px;
+            font-weight: 600;
+            font-family: inherit;
+            background: #2D7F44;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+        .book-btn:active { background: #245f35; }
+
+        /* ── Adhoc booking modal ── */
+        .booking-modal {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .booking-modal-inner {
+            background: #1e1e2e;
+            border-radius: 16px;
+            padding: 48px 56px;
+            text-align: center;
+            min-width: 520px;
+        }
+        .booking-title {
+            font-size: 40px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .booking-subtitle {
+            font-size: 24px;
+            color: #aaa;
+            margin-bottom: 40px;
+        }
+        .duration-stepper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .step-btn {
+            width: 72px; height: 72px;
+            font-size: 40px; line-height: 1;
+            background: #333;
+            color: #fff;
+            border: none; border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .step-btn:active { background: #555; }
+        .duration-display {
+            font-size: 48px;
+            font-weight: 700;
+            color: #fff;
+            min-width: 160px;
+        }
+        .until-next-btn {
+            display: block;
+            width: 100%;
+            margin-bottom: 32px;
+            padding: 16px;
+            font-size: 22px;
+            font-family: inherit;
+            background: #2a2a3e;
+            color: #aac;
+            border: 2px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .until-next-btn.selected,
+        .until-next-btn:active { border-color: #63B0A9; color: #63B0A9; }
+        .booking-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .cancel-btn {
+            padding: 16px 40px;
+            font-size: 26px;
+            font-family: inherit;
+            background: #333;
+            color: #ccc;
+            border: none; border-radius: 8px; cursor: pointer;
+        }
+        .confirm-btn {
+            padding: 16px 48px;
+            font-size: 26px;
+            font-family: inherit;
+            background: #2D7F44;
+            color: #fff;
+            border: none; border-radius: 8px; cursor: pointer;
+            font-weight: 600;
+        }
+        .confirm-btn:disabled { background: #555; cursor: default; }
+        .booking-error {
+            margin-top: 16px;
+            color: #f87; font-size: 20px;
+        }
     </style>
 </head>
 <body>
@@ -422,6 +533,9 @@
             {% else %}
                 <div class="nothing">No more bookings today</div>
             {% endif %}
+            {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+            <button class="book-btn" id="bookBtn" onclick="openBookingModal()">Book Now</button>
+            {% endif %}
         </div>
 
         <!-- Today's schedule -->
@@ -440,6 +554,30 @@
         </div>
 
     </div>
+
+    {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+    <div id="bookingModal" style="display:none;" class="booking-modal">
+        <div class="booking-modal-inner">
+            <div class="booking-title">Book this room</div>
+            <div class="booking-subtitle">How long do you need it?</div>
+            <div class="duration-stepper">
+                <button class="step-btn" onclick="changeDuration(-5)">–</button>
+                <div class="duration-display" id="durationDisplay">15 min</div>
+                <button class="step-btn" onclick="changeDuration(5)">+</button>
+            </div>
+            {% if next_event %}
+            <button class="until-next-btn" id="untilNextBtn" onclick="selectUntilNext()">
+                Until next booking ({{ next_event.start_time|time:'H:i' }})
+            </button>
+            {% endif %}
+            <div class="booking-actions">
+                <button class="cancel-btn" onclick="closeBookingModal()">Cancel</button>
+                <button class="confirm-btn" id="confirmBtn" onclick="confirmBooking()">Confirm Booking</button>
+            </div>
+            <div class="booking-error" id="bookingError" style="display:none;"></div>
+        </div>
+    </div>
+    {% endif %}
 
 </div>
 
@@ -562,6 +700,104 @@
         // Run immediately, then every second
         tick();
         setInterval(tick, 1000);
+
+        {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+        // ── Adhoc Booking ──
+        const BOOK_URL = "{% url 'event_schedule/book_adhoc' venue_id=room.venue_id room_id=room.pk %}";
+
+        let currentDurationMinutes = 15;
+        let useUntilNext = false;
+
+        function maxDuration() {
+            if (NEXT_EVT_START && NEXT_EVT_START !== "None") {
+                const minsUntilNext = Math.floor((new Date(NEXT_EVT_START).getTime() - serverTime()) / 60000);
+                return Math.min(240, Math.floor(minsUntilNext / 5) * 5) || 5;
+            }
+            return 240;
+        }
+
+        function openBookingModal() {
+            currentDurationMinutes = Math.min(15, maxDuration());
+            useUntilNext = false;
+            updateDurationDisplay();
+            const untilBtn = document.getElementById('untilNextBtn');
+            if (untilBtn) untilBtn.classList.remove('selected');
+            document.getElementById('bookingModal').style.display = 'flex';
+            document.getElementById('bookingError').style.display = 'none';
+            document.getElementById('confirmBtn').disabled = false;
+            document.getElementById('confirmBtn').textContent = 'Confirm Booking';
+        }
+
+        function closeBookingModal() {
+            document.getElementById('bookingModal').style.display = 'none';
+        }
+
+        function changeDuration(delta) {
+            useUntilNext = false;
+            const untilBtn = document.getElementById('untilNextBtn');
+            if (untilBtn) untilBtn.classList.remove('selected');
+            currentDurationMinutes = Math.min(maxDuration(), Math.max(5, currentDurationMinutes + delta));
+            updateDurationDisplay();
+        }
+
+        function selectUntilNext() {
+            useUntilNext = true;
+            const untilBtn = document.getElementById('untilNextBtn');
+            if (untilBtn) untilBtn.classList.add('selected');
+            document.getElementById('durationDisplay').textContent = 'Until next';
+        }
+
+        function updateDurationDisplay() {
+            const el = document.getElementById('durationDisplay');
+            if (!el) return;
+            if (currentDurationMinutes < 60) {
+                el.textContent = currentDurationMinutes + ' min';
+            } else {
+                const h = Math.floor(currentDurationMinutes / 60);
+                const m = currentDurationMinutes % 60;
+                el.textContent = h + 'h' + (m ? ' ' + m + 'm' : '');
+            }
+        }
+
+        function getCookie(name) {
+            const value = '; ' + document.cookie;
+            const parts = value.split('; ' + name + '=');
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function confirmBooking() {
+            const btn = document.getElementById('confirmBtn');
+            btn.disabled = true;
+            btn.textContent = 'Booking…';
+
+            const duration = useUntilNext ? 0 : currentDurationMinutes;
+            const formData = new FormData();
+            formData.append('duration_minutes', duration);
+
+            fetch(BOOK_URL, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCookie('csrftoken')},
+                body: formData,
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    location.reload();
+                } else {
+                    document.getElementById('bookingError').textContent = data.error || 'Booking failed.';
+                    document.getElementById('bookingError').style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Confirm Booking';
+                }
+            })
+            .catch(function() {
+                document.getElementById('bookingError').textContent = 'Network error. Please try again.';
+                document.getElementById('bookingError').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Confirm Booking';
+            });
+        }
+        {% endif %}
     </script>
 
 </body>
