@@ -14,6 +14,7 @@ class RoomInline(TabularInline):
 @admin.register(Venue)
 class VenueAdmin(ModelAdmin):
     list_display = ('id', 'name', 'artifax_id', 'overview_link')
+    list_display_links = ('id', 'name')
     search_fields = ('name',)
     inlines = [RoomInline]
 
@@ -28,6 +29,7 @@ class VenueAdmin(ModelAdmin):
 @admin.register(Room)
 class RoomAdmin(ModelAdmin):
     list_display = ('id', 'name', 'venue', 'artifax_id', 'o365_calendar_email', 'screen_link', 'tablet_link')
+    list_display_links = ('id', 'name')
     search_fields = ('name', 'venue__name')
     list_filter = ('venue',)
     list_select_related = ('venue',)
