@@ -5,19 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="refresh" content="60">
-    <title>{{ room.name }} – Edinburgh University Students' Association</title>
+    <title>{{ room.name }}</title>
     <style>
-        /*
-         * Edinburgh University Students' Association – Brand Palette
-         * Purple:  #592F65 / #B37DB1
-         * Blue:    #404692 / #5B97D2
-         * Teal:    #195F65 / #63B0A9
-         * Red:     #C40050 / #E1A388
-         * Orange:  #D16837 / #EEC216
-         * Green:   #2D7F44 / #ACC540
-         * Grey:    #4C4C4C / #D4D4D4
-         * Font:    Source Sans Pro (local)  |  Line-height: 105%
-         */
 
         @font-face {
             font-family: "Source Sans Pro";
@@ -48,6 +37,34 @@
             font-display: swap;
         }
 
+        /* ── Brand palette — override these for other brands ── */
+        :root {
+            --status-available: #2B9F5E;
+            --status-available-dark: #1F7A46;
+            --status-warning: #D4872E;
+            --status-in-use: #D14040;
+
+            --progress-track: #3A4556;
+            --progress-available: #3DBB78;
+            --progress-in-use: #E8B62C;
+            --progress-default: #2CA7A0;
+
+            --panel-bg: #1E2D3D;
+            --panel-label: #6F8898;
+            --panel-accent: #E8A825;
+            --panel-info: #4A9AD8;
+            --panel-teal: #2CA7A0;
+            --panel-muted: #A8B8C4;
+
+            --modal-bg: #162230;
+            --modal-btn: #2E4052;
+            --modal-btn-active: #3D556A;
+            --modal-border: #4A607A;
+            --modal-muted: #8098AA;
+
+            --color-error: #E25555;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         html, body {
@@ -74,21 +91,21 @@
             flex: 0 0 45vh;
             transition: background-color 0.6s ease;
         }
-        .bg-bands .bg-header.available { background: #2D7F44; }
-        .bg-bands .bg-header.warning   { background: #D16837; }
-        .bg-bands .bg-header.in-use    { background: #C40050; }
+        .bg-bands .bg-header.available { background: var(--status-available); }
+        .bg-bands .bg-header.warning   { background: var(--status-warning); }
+        .bg-bands .bg-header.in-use    { background: var(--status-in-use); }
         .bg-bands .bg-progress {
             flex: 0 0 1.5vh;
-            background: #4C4C4C;
+            background: var(--progress-track);
             overflow: hidden;
             transition: background-color 0.6s ease;
         }
-        .bg-bands .bg-progress.available { background: #2D7F44; }
-        .bg-bands .bg-progress.warning   { background: #D16837; }
-        .bg-bands .bg-progress.in-use    { background: #C40050; }
+        .bg-bands .bg-progress.available { background: var(--status-available); }
+        .bg-bands .bg-progress.warning   { background: var(--status-warning); }
+        .bg-bands .bg-progress.in-use    { background: var(--status-in-use); }
         .bg-bands .bg-bottom {
             flex: 1;
-            background: #592F65;
+            background: var(--panel-bg);
         }
 
         /* Fixed-size canvas — scaled to fill screen height by JS */
@@ -119,9 +136,9 @@
             transition: background-color 0.6s ease;
             flex-shrink: 0;
         }
-        .header.available { background: #2D7F44; }
-        .header.warning  { background: #D16837; }
-        .header.in-use    { background: #C40050; }
+        .header.available { background: var(--status-available); }
+        .header.warning  { background: var(--status-warning); }
+        .header.in-use    { background: var(--status-in-use); }
 
         /* Left column: logo */
         .header-left {
@@ -225,23 +242,23 @@
             width: 100%;
             height: 12px;
             flex-shrink: 0;
-            background: #4C4C4C;
+            background: var(--progress-track);
             overflow: hidden;
         }
         .progress-bar {
             height: 100%;
-            background: #63B0A9;
+            background: var(--progress-default);
             width: 0%;
             transition: width 1s linear;
         }
-        .progress-bar.available-bar { background: #ACC540; }
-        .progress-bar.in-use-bar    { background: #EEC216; }
+        .progress-bar.available-bar { background: var(--progress-available); }
+        .progress-bar.in-use-bar    { background: var(--progress-in-use); }
 
         /* ── Bottom section (800 - 360 - 12 = 428px) ── */
         .bottom {
             width: 100%;
             flex: 1;
-            background: #592F65;
+            background: var(--panel-bg);
             display: flex;
             overflow: hidden;
         }
@@ -262,7 +279,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 3px;
-            color: #B37DB1;
+            color: var(--panel-label);
             margin-bottom: 14px;
         }
         .next-event-panel .event-name {
@@ -279,7 +296,7 @@
         }
         .next-event-panel .event-organiser {
             font-size: 20px;
-            color: #D4D4D4;
+            color: var(--panel-muted);
             margin-bottom: 14px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -288,17 +305,17 @@
         .next-event-panel .event-time {
             font-size: 24px;
             font-weight: 600;
-            color: #EEC216;
+            color: var(--panel-accent);
         }
         .next-event-panel .countdown-secondary {
             font-size: 22px;
             margin-top: 8px;
-            color: #5B97D2;
+            color: var(--panel-info);
             font-weight: 400;
         }
         .next-event-panel .nothing {
             font-size: 24px;
-            color: #B37DB1;
+            color: var(--panel-label);
         }
 
         /* ── Schedule list ── */
@@ -312,12 +329,12 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 3px;
-            color: #B37DB1;
+            color: var(--panel-label);
             margin-bottom: 14px;
         }
         .schedule-list .date-line {
             font-size: 20px;
-            color: #D4D4D4;
+            color: var(--panel-muted);
             margin-bottom: 16px;
         }
         .schedule-item {
@@ -331,14 +348,14 @@
             border-radius: 6px;
             padding: 10px 12px;
             margin: 0 -12px;
-            border-left: 4px solid #EEC216;
+            border-left: 4px solid var(--panel-accent);
         }
         .schedule-item .time {
             font-size: 20px;
             font-weight: 600;
             width: 160px;
             flex-shrink: 0;
-            color: #63B0A9;
+            color: var(--panel-teal);
         }
         .schedule-item .details {
             flex: 1;
@@ -354,7 +371,7 @@
         }
         .schedule-item .details .organiser {
             font-size: 16px;
-            color: #D4D4D4;
+            color: var(--panel-muted);
             line-height: 1.3;
             white-space: nowrap;
             overflow: hidden;
@@ -368,14 +385,14 @@
             font-size: 28px;
             font-weight: 600;
             font-family: inherit;
-            background: #2D7F44;
+            background: var(--status-available);
             color: #fff;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             letter-spacing: 0.5px;
         }
-        .book-btn:active { background: #245f35; }
+        .book-btn:active { background: var(--status-available-dark); }
 
         /* ── Adhoc booking modal ── */
         .booking-modal {
@@ -387,7 +404,7 @@
             z-index: 20;
         }
         .booking-modal-inner {
-            background: #1e1e2e;
+            background: var(--modal-bg);
             border-radius: 16px;
             padding: 48px 56px;
             text-align: center;
@@ -402,7 +419,7 @@
         }
         .booking-subtitle {
             font-size: 24px;
-            color: #aaa;
+            color: var(--panel-muted);
             margin-bottom: 40px;
         }
         .duration-stepper {
@@ -415,13 +432,13 @@
         .step-btn {
             width: 72px; height: 72px;
             font-size: 40px; line-height: 1;
-            background: #333;
+            background: var(--modal-btn);
             color: #fff;
             border: none; border-radius: 8px;
             cursor: pointer;
             font-family: inherit;
         }
-        .step-btn:active { background: #555; }
+        .step-btn:active { background: var(--modal-btn-active); }
         .duration-display {
             font-size: 48px;
             font-weight: 700;
@@ -435,14 +452,14 @@
             padding: 16px;
             font-size: 22px;
             font-family: inherit;
-            background: #2a2a3e;
-            color: #aac;
-            border: 2px solid #444;
+            background: var(--modal-btn);
+            color: var(--modal-muted);
+            border: 2px solid var(--modal-border);
             border-radius: 8px;
             cursor: pointer;
         }
         .until-next-btn.selected,
-        .until-next-btn:active { border-color: #63B0A9; color: #63B0A9; }
+        .until-next-btn:active { border-color: var(--panel-teal); color: var(--panel-teal); }
         .booking-actions {
             display: flex;
             gap: 16px;
@@ -453,23 +470,23 @@
             padding: 16px 40px;
             font-size: 26px;
             font-family: inherit;
-            background: #333;
-            color: #ccc;
+            background: var(--modal-btn);
+            color: var(--panel-muted);
             border: none; border-radius: 8px; cursor: pointer;
         }
         .confirm-btn {
             padding: 16px 48px;
             font-size: 26px;
             font-family: inherit;
-            background: #2D7F44;
+            background: var(--status-available);
             color: #fff;
             border: none; border-radius: 8px; cursor: pointer;
             font-weight: 600;
         }
-        .confirm-btn:disabled { background: #555; cursor: default; }
+        .confirm-btn:disabled { background: var(--modal-btn-active); cursor: default; }
         .booking-error {
             margin-top: 16px;
-            color: #f87; font-size: 20px;
+            color: var(--color-error); font-size: 20px;
         }
     </style>
 </head>
