@@ -2,7 +2,7 @@ import datetime
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
-from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 # Create your views here.
@@ -156,7 +156,7 @@ def show_room_tablet(request, venue_id, room_id):
     return render(request, "room_schedules/room_tablet.html", context)
 
 
-@csrf_protect
+@csrf_exempt
 @require_POST
 def book_adhoc(request, venue_id, room_id):
     """Create an adhoc booking for a currently-free O365 room.
