@@ -149,10 +149,10 @@ def show_room(request, venue_id, room_id):
     return render(request, "room_schedules/room_screen.html", context)
 
 
-def show_room_display(request, venue_id, room_id):
+def show_room_tablet(request, venue_id, room_id):
     room = get_object_or_404(Room, pk=room_id)
     context = _get_room_display_context(room)
-    return render(request, "room_schedules/room_display.html", context)
+    return render(request, "room_schedules/room_tablet.html", context)
 
 
 @csrf_protect
