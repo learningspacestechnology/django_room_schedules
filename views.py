@@ -150,6 +150,30 @@ def show_room(request, venue_id, room_id):
     return render(request, "room_schedules/room_screen.html", context)
 
 
+def _is_legacy_browser(user_agent):
+    """Detect older/legacy browsers that need the compact CSS fix."""
+    if not user_agent:
+        return False
+    # Match the Safari 11 / WebKit 605 UA used by older display devices
+    return 'Version/11.0 Safari' in user_agent or 'AppleWebKit/605.1.15' in user_agent
+
+
+@ensure_csrf_cookie
+def show_room_uoe(request, venue_id, room_id):
+    room = get_object_or_404(Room, pk=room_id)
+    context = _get_room_display_context(room)
+    compact = request.GET.get('compact')
+    if compact is not None:
+        context['compact'] = compact == '1'
+    else:
+        context['compact'] = _is_legacy_browser(request.META.get('HTTP_USER_AGENT', ''))
+    return render(request, "room_schedules/room_screen_uoe.html", context)
+
+
+def css_diagnostic(request, venue_id, room_id):
+    return render(request, "room_schedules/css_diagnostic.html")
+
+
 @ensure_csrf_cookie
 def show_room_tablet(request, venue_id, room_id):
     room = get_object_or_404(Room, pk=room_id)
