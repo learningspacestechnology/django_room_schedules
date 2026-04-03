@@ -8,12 +8,12 @@ from room_schedules.models import Building, Room
 class RoomInline(TabularInline):
     model = Room
     extra = 0
-    fields = ('name', 'artifax_id', 'o365_calendar_email', 'allow_booking')
+    fields = ('name', 'o365_calendar_email', 'allow_booking')
 
 
 @admin.register(Building)
 class BuildingAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'artifax_id', 'overview_link')
+    list_display = ('id', 'name', 'overview_link')
     list_display_links = ('id', 'name')
     search_fields = ('name',)
     inlines = [RoomInline]
@@ -28,7 +28,7 @@ class BuildingAdmin(ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'building', 'artifax_id', 'o365_calendar_email', 'allow_booking', 'screen_link')
+    list_display = ('id', 'name', 'building', 'o365_calendar_email', 'allow_booking', 'screen_link')
     list_display_links = ('id', 'name')
     search_fields = ('name', 'building__name')
     list_filter = ('building',)
