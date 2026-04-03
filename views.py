@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 
 # Create your views here.
 from room_schedules.settings import HOUR_BREAK_POINT
-from room_schedules.models import Venue, Event, Room
+from room_schedules.models import Building, Event, Room
 
 
 def room_led_status(request, venue_id, room_id):
@@ -52,9 +52,9 @@ def room_led_status(request, venue_id, room_id):
     return response
 
 
-def show_venue(request, venue_id):
-    venue = get_object_or_404(Venue, pk=venue_id)
-    events = Event.objects.filter(room__venue=venue, end_time__gte=datetime.datetime.now(), cancelled=False)
+def show_building(request, venue_id):
+    building = get_object_or_404(Building, pk=venue_id)
+    events = Event.objects.filter(room__building=building, end_time__gte=datetime.datetime.now(), cancelled=False)
     current_date = (datetime.datetime.now() - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
     return render(request, "room_schedules/dashboard.html", {'events': events, 'current_date': current_date})
 

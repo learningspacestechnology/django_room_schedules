@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
-from room_schedules.models import Venue, Room
+from room_schedules.models import Building, Room
 
 
 class RoomInline(TabularInline):
@@ -11,8 +11,8 @@ class RoomInline(TabularInline):
     fields = ('name', 'artifax_id', 'o365_calendar_email', 'allow_booking')
 
 
-@admin.register(Venue)
-class VenueAdmin(ModelAdmin):
+@admin.register(Building)
+class BuildingAdmin(ModelAdmin):
     list_display = ('id', 'name', 'artifax_id', 'overview_link')
     list_display_links = ('id', 'name')
     search_fields = ('name',)
@@ -28,16 +28,16 @@ class VenueAdmin(ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'venue', 'artifax_id', 'o365_calendar_email', 'allow_booking', 'screen_link')
+    list_display = ('id', 'name', 'building', 'artifax_id', 'o365_calendar_email', 'allow_booking', 'screen_link')
     list_display_links = ('id', 'name')
-    search_fields = ('name', 'venue__name')
-    list_filter = ('venue',)
-    list_select_related = ('venue',)
+    search_fields = ('name', 'building__name')
+    list_filter = ('building',)
+    list_select_related = ('building',)
 
     def screen_link(self, obj):
         return format_html(
             '<a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-400" href="/event_schedules/{}/{}">Screen</a>',
-            obj.venue_id, obj.id,
+            obj.building_id, obj.id,
         )
     screen_link.short_description = 'Screen Link'
 

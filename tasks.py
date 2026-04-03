@@ -1,11 +1,11 @@
 import datetime
 from celery import shared_task
-from room_schedules.models import Venue, Event
+from room_schedules.models import Building, Event
 
 @shared_task(name='room_schedules.tasks.build_schedule')
 def build_schedule():
-    for venue in Venue.objects.all():
-        venue.update_events()
+    for building in Building.objects.all():
+        building.update_events()
 
 @shared_task(name='room_schedules.tasks.cleanup_schedule')
 def cleanup_schedule():

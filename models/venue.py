@@ -4,7 +4,7 @@ from django.urls import reverse
 from room_schedules.artifax_requests import get_todays_events_simple
 
 
-class Venue(models.Model):
+class Building(models.Model):
     name = models.CharField(max_length=100)
     artifax_id = models.IntegerField(unique=True, null=True, blank=True)
 
@@ -12,7 +12,7 @@ class Venue(models.Model):
         return "{}: {}".format(self.pk, self.name)
 
     def get_absolute_url(self):
-        return reverse('event_schedule/venue', args=[str(self.id)])
+        return reverse('event_schedule/building', args=[str(self.id)])
 
     def update_events(self):
         from room_schedules.models import Room, Event
@@ -26,7 +26,7 @@ class Venue(models.Model):
             for e in events:
                 room, _ = Room.objects.update_or_create(
                     artifax_id=e['room_id'],
-                    defaults={'name': e['room_name'], 'venue': self},
+                    defaults={'name': e['room_name'], 'building': self},
                 )
                 ev, created = Event.objects.update_or_create(
                     artifax_id=e['event_id'],
@@ -42,7 +42,7 @@ class Venue(models.Model):
                 artifax_ids.append(ev.id)
                 if created:
                     new_events += 1
-            Event.objects.filter(room__venue=self, artifax_id__isnull=False).exclude(
+            Event.objects.filter(room__building=self, artifax_id__isnull=False).exclude(
                 pk__in=artifax_ids
             ).delete()
             print("{} (Artifax) created {} events and updated {}".format(
