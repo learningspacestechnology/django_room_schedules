@@ -210,7 +210,7 @@
     <!-- Body: booking list, paginated by Display plugin -->
     <main class="card-body" data-provide="uoe-display">
         <div class="row row-cols-1 g-3">
-            {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+            {% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
             <div class="col">
                 <div class="card book-now-card" onclick="openBookingModal()">
                     <div class="card-body display-booking display-booking-large">
@@ -248,7 +248,7 @@
 
 </div>
 
-{% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+{% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
 <!-- Booking overlay & modal -->
 <div class="booking-overlay" id="bookingOverlay" onclick="closeBookingModal()"></div>
 <div class="booking-modal" id="bookingModal">
@@ -329,7 +329,7 @@
     {% endif %}
 </script>
 
-{% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+{% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
 <script>
     // ── Adhoc Booking ──
     var BOOK_URL = "{% url 'event_schedule/book_adhoc' venue_id=room.venue_id room_id=room.pk %}";

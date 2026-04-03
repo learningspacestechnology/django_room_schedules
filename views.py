@@ -144,12 +144,6 @@ def _get_room_display_context(room):
     }
 
 
-def show_room(request, venue_id, room_id):
-    room = get_object_or_404(Room, pk=room_id)
-    context = _get_room_display_context(room)
-    return render(request, "room_schedules/room_screen.html", context)
-
-
 def _is_legacy_browser(user_agent):
     """Detect older/legacy browsers that need the compact CSS fix."""
     if not user_agent:
@@ -159,7 +153,7 @@ def _is_legacy_browser(user_agent):
 
 
 @ensure_csrf_cookie
-def show_room_uoe(request, venue_id, room_id):
+def show_room(request, venue_id, room_id):
     room = get_object_or_404(Room, pk=room_id)
     context = _get_room_display_context(room)
     compact = request.GET.get('compact')
@@ -174,13 +168,6 @@ def css_diagnostic(request, venue_id, room_id):
     return render(request, "room_schedules/css_diagnostic.html")
 
 
-@ensure_csrf_cookie
-def show_room_tablet(request, venue_id, room_id):
-    room = get_object_or_404(Room, pk=room_id)
-    context = _get_room_display_context(room)
-    return render(request, "room_schedules/room_tablet.html", context)
-
-
 @csrf_exempt
 @require_POST
 def book_adhoc(request, venue_id, room_id):
@@ -193,7 +180,7 @@ def book_adhoc(request, venue_id, room_id):
 
     room = get_object_or_404(Room, pk=room_id)
 
-    if not room.allow_tablet_booking or not room.o365_calendar_email:
+    if not room.allow_booking or not room.o365_calendar_email:
         return JsonResponse({'error': 'Room does not support adhoc booking.'}, status=400)
 
     now = datetime.datetime.now()
