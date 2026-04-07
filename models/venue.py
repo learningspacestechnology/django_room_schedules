@@ -4,6 +4,7 @@ from django.urls import reverse
 
 class Building(models.Model):
     name = models.CharField(max_length=100)
+    ip_address = models.GenericIPAddressField(null=True, blank=True, unique=True, verbose_name="IP address")
 
     def __str__(self):
         return "{}: {}".format(self.pk, self.name)

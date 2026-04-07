@@ -1,10 +1,31 @@
 import datetime
 import hashlib
 
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render, get_object_or_404
+from django.conf import settings
+from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
+
+
+def get_client_ip(request):
+    if getattr(settings, 'USE_LAST_FORWARDED_FOR_IP', False):
+        return request.META.get('HTTP_X_FORWARDED_FOR').split(",")[-1].strip()
+    if getattr(settings, 'USE_FIRST_FORWARDED_FOR_IP', False):
+        return request.META.get('HTTP_X_FORWARDED_FOR').split(",")[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+def auto_route(request):
+    ip = get_client_ip(request)
+    if ip:
+        room = Room.objects.filter(ip_address=ip).first()
+        if room:
+            return redirect('room_schedule/room', venue_id=room.building_id, room_id=room.pk)
+        building = Building.objects.filter(ip_address=ip).first()
+        if building:
+            return redirect('room_schedule/building', venue_id=building.pk)
+    return HttpResponseNotFound("No room or building mapped to this IP ({}).".format(ip))
 
 # Create your views here.
 from room_schedules.settings import HOUR_BREAK_POINT
