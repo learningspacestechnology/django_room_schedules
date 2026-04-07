@@ -15,10 +15,12 @@ Including another URLconf
 """
 from django.urls import path
 
-from .views import show_building, show_room, room_led_status, book_adhoc, room_state_hash, css_diagnostic
+from .views import show_building_grid, show_building_foyer, building_state_hash, show_room, room_led_status, book_adhoc, room_state_hash, css_diagnostic
 
 urlpatterns = [
-    path('<int:venue_id>', show_building, name="event_schedule/building"),
+    path('<int:venue_id>', show_building_grid, name="event_schedule/building"),
+    path('<int:venue_id>/foyer', show_building_foyer, name="event_schedule/building_foyer"),
+    path('<int:venue_id>/state_hash', building_state_hash, name="event_schedule/building_state_hash"),
     path('<int:venue_id>/<int:room_id>', show_room, name="event_schedule/room"),
     path('<int:venue_id>/<int:room_id>/LED', room_led_status, name="event_schedule/room_led"),
     path('<int:venue_id>/<int:room_id>/book', book_adhoc, name="event_schedule/book_adhoc"),

@@ -13,17 +13,24 @@ class RoomInline(TabularInline):
 
 @admin.register(Building)
 class BuildingAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'overview_link')
+    list_display = ('id', 'name', 'grid_link', 'foyer_link')
     list_display_links = ('id', 'name')
     search_fields = ('name',)
     inlines = [RoomInline]
 
-    def overview_link(self, obj):
+    def grid_link(self, obj):
         return format_html(
-            '<a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" href="/event_schedules/{}">Overview</a>',
+            '<a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" href="/event_schedules/{}">Grid</a>',
             obj.id,
         )
-    overview_link.short_description = 'Screen Link'
+    grid_link.short_description = 'Grid'
+
+    def foyer_link(self, obj):
+        return format_html(
+            '<a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" href="/event_schedules/{}/foyer">Foyer</a>',
+            obj.id,
+        )
+    foyer_link.short_description = 'Foyer'
 
 
 @admin.register(Room)
