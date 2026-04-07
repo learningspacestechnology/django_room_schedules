@@ -18,12 +18,12 @@ from django.urls import path
 from .views import show_building_grid, show_building_foyer, building_state_hash, show_room, room_led_status, book_adhoc, room_state_hash, css_diagnostic
 
 urlpatterns = [
-    path('<int:venue_id>', show_building_grid, name="event_schedule/building"),
-    path('<int:venue_id>/foyer', show_building_foyer, name="event_schedule/building_foyer"),
-    path('<int:venue_id>/state_hash', building_state_hash, name="event_schedule/building_state_hash"),
-    path('<int:venue_id>/<int:room_id>', show_room, name="event_schedule/room"),
-    path('<int:venue_id>/<int:room_id>/LED', room_led_status, name="event_schedule/room_led"),
-    path('<int:venue_id>/<int:room_id>/book', book_adhoc, name="event_schedule/book_adhoc"),
-    path('<int:venue_id>/<int:room_id>/state_hash', room_state_hash, name="event_schedule/room_state_hash"),
-    path('<int:venue_id>/<int:room_id>/diagnostic', css_diagnostic, name="event_schedule/css_diagnostic"),
+    path('<int:venue_id>', show_building_grid, name="room_schedule/building"),
+    path('<int:venue_id>/foyer', show_building_foyer, name="room_schedule/building_foyer"),
+    path('<int:venue_id>/state_hash', building_state_hash, name="room_schedule/building_state_hash"),
+    path('<int:venue_id>/<int:room_id>', show_room, name="room_schedule/room"),
+    path('<int:venue_id>/<int:room_id>/LED', room_led_status, name="room_schedule/room_led"),
+    path('<int:venue_id>/<int:room_id>/book', book_adhoc, name="room_schedule/book_adhoc"),
+    path('<int:venue_id>/<int:room_id>/state_hash', room_state_hash, name="room_schedule/room_state_hash"),
+    path('<int:venue_id>/<int:room_id>/diagnostic', css_diagnostic, name="room_schedule/css_diagnostic"),
 ]

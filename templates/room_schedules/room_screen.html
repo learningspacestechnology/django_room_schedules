@@ -639,7 +639,7 @@
     setInterval(tick, 1000);
 
     // ── Poll for booking changes instead of full-page meta refresh ──
-    const STATE_HASH_URL = "{% url 'event_schedule/room_state_hash' venue_id=room.venue_id room_id=room.pk %}";
+    const STATE_HASH_URL = "{% url 'room_schedule/room_state_hash' venue_id=room.venue_id room_id=room.pk %}";
     let lastStateHash = null;
     let hashPollFailures = 0;
 
@@ -668,7 +668,7 @@
 
     {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
     // ── Adhoc Booking ──
-    const BOOK_URL = "{% url 'event_schedule/book_adhoc' venue_id=room.venue_id room_id=room.pk %}";
+    const BOOK_URL = "{% url 'room_schedule/book_adhoc' venue_id=room.venue_id room_id=room.pk %}";
 
     let currentDurationMinutes = 15;
     let useUntilNext = false;

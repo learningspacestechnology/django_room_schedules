@@ -9,7 +9,7 @@ class Building(models.Model):
         return "{}: {}".format(self.pk, self.name)
 
     def get_absolute_url(self):
-        return reverse('event_schedule/building', args=[str(self.id)])
+        return reverse('room_schedule/building', args=[str(self.id)])
 
     def update_events(self):
         from room_schedules.models import Room, Event

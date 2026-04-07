@@ -17,6 +17,6 @@ class Room(models.Model):
         return "{}: {}".format(self.pk, self.name)
 
     def get_absolute_url(self):
-        return reverse('event_schedule/room', args=[str(self.building.id), str(self.id)])
+        return reverse('room_schedule/room', args=[str(self.building.id), str(self.id)])
 
 

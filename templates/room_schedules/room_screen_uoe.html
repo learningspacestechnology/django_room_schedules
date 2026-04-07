@@ -283,7 +283,7 @@
 {% endif %}
 <script>
     // ── Poll for booking changes ──
-    var STATE_HASH_URL = "{% url 'event_schedule/room_state_hash' venue_id=room.building_id room_id=room.pk %}";
+    var STATE_HASH_URL = "{% url 'room_schedule/room_state_hash' venue_id=room.building_id room_id=room.pk %}";
     var lastStateHash = null;
     var hashPollFailures = 0;
 
@@ -332,7 +332,7 @@
 {% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
 <script>
     // ── Adhoc Booking ──
-    var BOOK_URL = "{% url 'event_schedule/book_adhoc' venue_id=room.building_id room_id=room.pk %}";
+    var BOOK_URL = "{% url 'room_schedule/book_adhoc' venue_id=room.building_id room_id=room.pk %}";
     var NEXT_EVT_START = "{{ next_event_start_iso|default:'None' }}";
     var currentDurationMinutes = 15;
     var useUntilNext = false;
