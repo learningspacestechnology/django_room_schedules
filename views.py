@@ -9,10 +9,12 @@ from django.views.decorators.http import require_POST
 
 
 def get_client_ip(request):
-    if getattr(settings, 'USE_LAST_FORWARDED_FOR_IP', False):
-        return request.META.get('HTTP_X_FORWARDED_FOR').split(",")[-1].strip()
-    if getattr(settings, 'USE_FIRST_FORWARDED_FOR_IP', False):
-        return request.META.get('HTTP_X_FORWARDED_FOR').split(",")[0].strip()
+    xff = request.META.get('HTTP_X_FORWARDED_FOR')
+    if xff:
+        if getattr(settings, 'USE_LAST_FORWARDED_FOR_IP', False):
+            return xff.split(",")[-1].strip()
+        if getattr(settings, 'USE_FIRST_FORWARDED_FOR_IP', False):
+            return xff.split(",")[0].strip()
     return request.META.get('REMOTE_ADDR')
 
 
