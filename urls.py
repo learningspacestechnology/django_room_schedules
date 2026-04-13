@@ -18,7 +18,7 @@ from django.urls import path
 from .views import show_building_grid, show_building_foyer, building_state_hash, show_room, room_led_status, book_adhoc, room_state_hash, css_diagnostic, auto_route
 
 urlpatterns = [
-    path('auto', auto_route, name="room_schedule/auto_route"),
+    path('', auto_route, name="room_schedule/auto_route"),
     path('<int:venue_id>', show_building_grid, name="room_schedule/building"),
     path('<int:venue_id>/foyer', show_building_foyer, name="room_schedule/building_foyer"),
     path('<int:venue_id>/state_hash', building_state_hash, name="room_schedule/building_state_hash"),
