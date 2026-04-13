@@ -13,7 +13,7 @@ class RoomInline(TabularInline):
 
 @admin.register(Building)
 class BuildingAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'ip_address', 'grid_link', 'foyer_link')
+    list_display = ('id', 'name', 'ip_address', 'default_display', 'grid_link', 'foyer_link')
     list_display_links = ('id', 'name')
     search_fields = ('name',)
     inlines = [RoomInline]

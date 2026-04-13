@@ -3,8 +3,16 @@ from django.urls import reverse
 
 
 class Building(models.Model):
+    DISPLAY_GRID = 'grid'
+    DISPLAY_FOYER = 'foyer'
+    DISPLAY_CHOICES = [
+        (DISPLAY_GRID, 'Grid'),
+        (DISPLAY_FOYER, 'Foyer'),
+    ]
+
     name = models.CharField(max_length=100)
     ip_address = models.GenericIPAddressField(null=True, blank=True, unique=True, verbose_name="IP address")
+    default_display = models.CharField(max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_GRID)
 
     def __str__(self):
         return "{}: {}".format(self.pk, self.name)
