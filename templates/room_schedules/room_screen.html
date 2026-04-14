@@ -1,0 +1,771 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ room.name }}</title>
+    <link rel="stylesheet" href="{% static 'room_schedules/brand.css' %}">
+    <style>
+
+        @font-face {
+            font-family: "Source Sans Pro";
+            src: url("{% static 'room_schedules/fonts/SourceSansPro-Light.ttf' %}") format("truetype");
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "Source Sans Pro";
+            src: url("{% static 'room_schedules/fonts/SourceSansPro-Regular.ttf' %}") format("truetype");
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "Source Sans Pro";
+            src: url("{% static 'room_schedules/fonts/SourceSansPro-SemiBold.ttf' %}") format("truetype");
+            font-weight: 600;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "Source Sans Pro";
+            src: url("{% static 'room_schedules/fonts/SourceSansPro-Bold.ttf' %}") format("truetype");
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--panel-bg);
+        }
+
+        body {
+            font-family: "Source Sans Pro", "Calibri", sans-serif;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: clamp(16px, 2vh, 32px) clamp(20px, 3vw, 48px);
+            transition: background-color 0.6s ease;
+            flex-shrink: 0;
+            min-height: 45vh;
+        }
+        .header.available { background: var(--status-available); }
+        .header.warning   { background: var(--status-warning); }
+        .header.in-use    { background: var(--status-in-use); }
+
+        .header-left {
+            justify-self: start;
+        }
+        .header-left img {
+            height: clamp(60px, 10vh, 120px);
+            width: auto;
+        }
+
+        .header-centre {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 0 clamp(8px, 1vw, 24px);
+        }
+
+        .venue-name {
+            font-size: clamp(18px, 2.8vw, 36px);
+            font-weight: 300;
+            letter-spacing: 2px;
+            line-height: 1.2;
+            margin-bottom: 4px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .room-name {
+            font-size: clamp(28px, 4vw, 52px);
+            font-weight: 700;
+            letter-spacing: 1px;
+            line-height: 1.2;
+            margin-bottom: clamp(6px, 1vh, 12px);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .status-label {
+            font-size: clamp(32px, 5vw, 64px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .header_event_name {
+            font-size: clamp(18px, 2.4vw, 30px);
+            font-weight: 400;
+            line-height: 1.3;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .header_event_organiser {
+            font-size: clamp(18px, 2.4vw, 30px);
+            font-weight: 400;
+            line-height: 1.3;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .countdown-primary {
+            font-size: clamp(18px, 2.4vw, 30px);
+            font-weight: 400;
+            line-height: 1.3;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .header-right {
+            justify-self: end;
+        }
+
+        .live-clock {
+            font-size: clamp(48px, 7.5vw, 96px);
+            font-weight: 300;
+            line-height: 1.2;
+        }
+
+        /* ── Progress bar ── */
+        .progress-container {
+            width: 100%;
+            height: clamp(8px, 1.2vh, 14px);
+            flex-shrink: 0;
+            background: var(--progress-track);
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: var(--progress-default);
+            width: 0%;
+            transition: width 1s linear;
+        }
+        .progress-bar.available-bar { background: var(--progress-available); }
+        .progress-bar.in-use-bar    { background: var(--progress-in-use); }
+
+        /* ── Bottom section ── */
+        .bottom {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* ── Next event panel ── */
+        .next-event-panel {
+            width: 35%;
+            min-width: 280px;
+            padding: clamp(16px, 2.5vh, 28px) clamp(16px, 2.5vw, 32px);
+            border-right: 1px solid rgba(255,255,255,0.12);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .next-event-panel .label {
+            font-size: clamp(13px, 1.4vw, 18px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--panel-label);
+            margin-bottom: clamp(8px, 1.2vh, 14px);
+        }
+        .next-event-panel .event-name {
+            font-size: clamp(20px, 2.2vw, 28px);
+            font-weight: 700;
+            margin-bottom: 8px;
+            line-height: 105%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            line-clamp: 2;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .next-event-panel .event-organiser {
+            font-size: clamp(15px, 1.6vw, 20px);
+            color: var(--panel-muted);
+            margin-bottom: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .next-event-panel .event-time {
+            font-size: clamp(18px, 1.9vw, 24px);
+            font-weight: 600;
+            color: var(--panel-accent);
+        }
+        .next-event-panel .countdown-secondary {
+            font-size: clamp(16px, 1.7vw, 22px);
+            margin-top: 8px;
+            color: var(--panel-info);
+            font-weight: 400;
+        }
+        .next-event-panel .nothing {
+            font-size: clamp(18px, 1.9vw, 24px);
+            color: var(--panel-label);
+        }
+
+        /* ── Schedule list ── */
+        .schedule-list {
+            flex: 1;
+            padding: clamp(16px, 2.5vh, 24px) clamp(16px, 2.5vw, 32px);
+            overflow-y: auto;
+            min-width: 0;
+        }
+        .schedule-list .label {
+            font-size: clamp(13px, 1.4vw, 18px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--panel-label);
+            margin-bottom: clamp(8px, 1.2vh, 14px);
+        }
+        .schedule-list .date-line {
+            font-size: clamp(15px, 1.6vw, 20px);
+            color: var(--panel-muted);
+            margin-bottom: clamp(10px, 1.4vh, 16px);
+        }
+        .schedule-item {
+            display: flex;
+            align-items: center;
+            padding: clamp(6px, 0.8vh, 10px) 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .schedule-item.is-current {
+            background: rgba(255,255,255,0.08);
+            border-radius: 6px;
+            padding: clamp(6px, 0.8vh, 10px) 12px;
+            margin: 0 -12px;
+            border-left: 4px solid var(--panel-accent);
+        }
+        .schedule-item .time {
+            font-size: clamp(15px, 1.6vw, 20px);
+            font-weight: 600;
+            width: clamp(110px, 12vw, 160px);
+            flex-shrink: 0;
+            color: var(--panel-active);
+        }
+        .schedule-item .details {
+            flex: 1;
+            overflow: hidden;
+            min-width: 0;
+        }
+        .schedule-item .details .name {
+            font-size: clamp(15px, 1.6vw, 20px);
+            font-weight: 600;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .schedule-item .details .organiser {
+            font-size: clamp(12px, 1.3vw, 16px);
+            color: var(--panel-muted);
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ── Adhoc booking button ── */
+        .book-btn {
+            margin-top: clamp(12px, 1.5vh, 20px);
+            padding: clamp(10px, 1.2vh, 16px) clamp(24px, 3vw, 40px);
+            font-size: clamp(20px, 2.2vw, 28px);
+            font-weight: 600;
+            font-family: inherit;
+            background: var(--status-available);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+        .book-btn:active { background: var(--status-available-dark); }
+
+        /* ── Adhoc booking modal ── */
+        .booking-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 15;
+        }
+        .booking-modal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+        .booking-modal-inner {
+            background: var(--modal-bg);
+            border-radius: 16px;
+            padding: clamp(32px, 4vh, 48px) clamp(36px, 4vw, 56px);
+            text-align: center;
+            min-width: min(520px, 90vw);
+            font-family: "Source Sans Pro", "Calibri", sans-serif;
+        }
+        .booking-title {
+            font-size: clamp(28px, 3.2vw, 40px);
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .booking-subtitle {
+            font-size: clamp(18px, 2vw, 24px);
+            color: var(--panel-muted);
+            margin-bottom: clamp(24px, 3vh, 40px);
+        }
+        .duration-stepper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(12px, 2vw, 24px);
+            margin-bottom: clamp(16px, 2vh, 24px);
+        }
+        .step-btn {
+            width: clamp(52px, 5.5vw, 72px);
+            height: clamp(52px, 5.5vw, 72px);
+            font-size: clamp(28px, 3vw, 40px);
+            line-height: 1;
+            background: var(--modal-btn);
+            color: #fff;
+            border: none; border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .step-btn:active { background: var(--modal-btn-active); }
+        .duration-display {
+            font-size: clamp(32px, 3.8vw, 48px);
+            font-weight: 700;
+            color: #fff;
+            min-width: clamp(120px, 13vw, 160px);
+        }
+        .until-next-btn {
+            display: block;
+            width: 100%;
+            margin-bottom: clamp(20px, 2.5vh, 32px);
+            padding: clamp(10px, 1.2vh, 16px);
+            font-size: clamp(16px, 1.8vw, 22px);
+            font-family: inherit;
+            background: var(--modal-btn);
+            color: var(--modal-muted);
+            border: 2px solid var(--modal-border);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .until-next-btn.selected,
+        .until-next-btn:active { border-color: var(--panel-active); color: var(--panel-active); }
+        .booking-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .cancel-btn {
+            padding: clamp(10px, 1.2vh, 16px) clamp(24px, 3vw, 40px);
+            font-size: clamp(18px, 2vw, 26px);
+            font-family: inherit;
+            background: var(--modal-btn);
+            color: var(--panel-muted);
+            border: none; border-radius: 8px; cursor: pointer;
+        }
+        .confirm-btn {
+            padding: clamp(10px, 1.2vh, 16px) clamp(30px, 3.5vw, 48px);
+            font-size: clamp(18px, 2vw, 26px);
+            font-family: inherit;
+            background: var(--status-available);
+            color: #fff;
+            border: none; border-radius: 8px; cursor: pointer;
+            font-weight: 600;
+        }
+        .confirm-btn:disabled { background: var(--modal-btn-active); cursor: default; }
+        .booking-error {
+            margin-top: 16px;
+            color: var(--color-error);
+            font-size: clamp(14px, 1.6vw, 20px);
+        }
+
+        /* ── Responsive: stack bottom panels on narrow viewports ── */
+        @media (max-width: 720px) {
+            .bottom {
+                flex-direction: column;
+            }
+            .next-event-panel {
+                width: 100%;
+                min-width: 0;
+                border-right: none;
+                border-bottom: 1px solid rgba(255,255,255,0.12);
+            }
+            .header {
+                min-height: 35vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ── Header: logo | venue/room/status | clock ── -->
+    <div class="header {% if is_available %}{% if is_warning %}warning{% else %}available{% endif %}{% else %}in-use{% endif %}" id="statusBanner">
+        <div class="header-left">
+            <img src="{% static 'room_schedules/logo.png' %}" alt="Logo">
+        </div>
+        <div class="header-centre">
+            <div class="venue-name">{{ room.venue.name }}</div>
+            <div class="room-name">{{ room.name }}</div>
+            {% if is_available %}
+                {% if is_warning %}
+                    <div class="status-label">Busy Soon</div>
+                {% else %}
+                    <div class="status-label">Available</div>
+                {% endif %}
+                {% if next_event %}
+                    <div class="countdown-primary" id="countdownPrimary">
+                        Free until {{ next_event.start_time|time:'H:i' }}
+                    </div>
+                {% else %}
+                    <div class="countdown-primary">Free for the rest of the day</div>
+                {% endif %}
+            {% else %}
+                <div class="status-label">In Use</div>
+                <div class="header_event_name">{{ current_event.name }}</div>
+                <div class="header_event_organiser">{{ current_event.organiser }}</div>
+                <div class="countdown-primary" id="countdownPrimary">
+                    Until {{ current_event.end_time|time:'H:i' }}
+                </div>
+            {% endif %}
+        </div>
+        <div class="header-right">
+            <div class="live-clock" id="liveClock"></div>
+        </div>
+    </div>
+
+    <!-- ── Progress bar ── -->
+    <div class="progress-container">
+        <div class="progress-bar {% if is_available %}available-bar{% else %}in-use-bar{% endif %}" id="progressBar"></div>
+    </div>
+
+    <!-- ── Bottom section ── -->
+    <div class="bottom">
+
+        <!-- Next event panel -->
+        <div class="next-event-panel">
+            <div class="label">{% if is_available %}Next Booking{% else %}Up Next{% endif %}</div>
+            {% if next_event %}
+                <div class="event-name">{{ next_event.name }}</div>
+                <div class="event-organiser">{{ next_event.organiser }}</div>
+                <div class="event-time">{{ next_event.start_time|time:'H:i' }} – {{ next_event.end_time|time:'H:i' }}</div>
+                <div class="countdown-secondary" id="countdownSecondary">
+                    Starts in …
+                </div>
+            {% else %}
+                <div class="nothing">No more bookings today</div>
+            {% endif %}
+            {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+            <button class="book-btn" id="bookBtn" onclick="openBookingModal()">Book Now</button>
+            {% endif %}
+        </div>
+
+        <!-- Today's schedule -->
+        <div class="schedule-list">
+            <div class="label">Today's Schedule</div>
+            <div class="date-line">{{ current_date|date:'l j' }}<sup>{{ current_date|date:'S' }}</sup> {{ current_date|date:'F' }}</div>
+            {% for event in events %}
+                <div class="schedule-item {% if event == current_event %}is-current{% endif %}">
+                    <div class="time">{{ event.start_time|time:'H:i' }} – {{ event.end_time|time:'H:i' }}</div>
+                    <div class="details">
+                        <div class="name">{{ event.name }}</div>
+                        <div class="organiser">{{ event.organiser }}</div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+    </div>
+
+{% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+<div id="bookingOverlay" style="display:none;" class="booking-overlay"></div>
+<div id="bookingModal" style="display:none;" class="booking-modal">
+    <div class="booking-modal-inner">
+        <div class="booking-title">Book this room</div>
+        <div class="booking-subtitle">How long do you need it?</div>
+        <div class="duration-stepper">
+            <button class="step-btn" onclick="changeDuration(-5)">–</button>
+            <div class="duration-display" id="durationDisplay">15 min</div>
+            <button class="step-btn" onclick="changeDuration(5)">+</button>
+        </div>
+        {% if next_event %}
+        <button class="until-next-btn" id="untilNextBtn" onclick="selectUntilNext()">
+            Until next booking ({{ next_event.start_time|time:'H:i' }})
+        </button>
+        {% endif %}
+        <div class="booking-actions">
+            <button class="cancel-btn" onclick="closeBookingModal()">Cancel</button>
+            <button class="confirm-btn" id="confirmBtn" onclick="confirmBooking()">Confirm Booking</button>
+        </div>
+        <div class="booking-error" id="bookingError" style="display:none;"></div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    // ── Server-provided timestamps ──
+    const NOW_ISO           = "{{ now_iso }}";
+    const CURRENT_EVT_START = "{{ current_event_start_iso }}";
+    const CURRENT_EVT_END   = "{{ current_event_end_iso }}";
+    const NEXT_EVT_START    = "{{ next_event_start_iso }}";
+    const FREE_SINCE        = "{{ free_since_iso }}";
+    const IS_AVAILABLE      = {{ is_available|yesno:"true,false" }};
+
+    // Calculate the offset between server time and client time
+    const serverNow  = new Date(NOW_ISO).getTime();
+    const clientNow  = Date.now();
+    const clockDrift = serverNow - clientNow;
+
+    function serverTime() {
+        return Date.now() + clockDrift;
+    }
+
+    // ── Format helpers ──
+    function formatCountdown(ms) {
+        if (ms <= 0) return "0 minutes";
+        const totalMin = Math.ceil(ms / 60000);
+        if (totalMin < 60) return totalMin + " minutes";
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        return h + " hours " + (m > 0 ? m + " minutes" : "");
+    }
+
+    function pad(n) { return n < 10 ? "0" + n : n; }
+
+    // ── Tick every second ──
+    function tick() {
+        const now = new Date(serverTime());
+
+        // Live clock
+        const clockEl = document.getElementById("liveClock");
+        if (clockEl) {
+            clockEl.textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
+        }
+
+        const primaryEl   = document.getElementById("countdownPrimary");
+        const secondaryEl = document.getElementById("countdownSecondary");
+        const progressEl  = document.getElementById("progressBar");
+
+        if (!IS_AVAILABLE && CURRENT_EVT_END && CURRENT_EVT_END !== "None") {
+            const endMs   = new Date(CURRENT_EVT_END).getTime();
+            const remaining = endMs - now.getTime();
+
+            if (remaining <= 0) {
+                location.reload();
+                return;
+            }
+
+            if (primaryEl) {
+                primaryEl.textContent = "Ends in " + formatCountdown(remaining);
+            }
+
+            if (progressEl && CURRENT_EVT_START && CURRENT_EVT_START !== "None") {
+                const startMs  = new Date(CURRENT_EVT_START).getTime();
+                const total    = endMs - startMs;
+                const elapsed  = now.getTime() - startMs;
+                const pct      = Math.min(100, Math.max(0, (elapsed / total) * 100));
+                progressEl.style.width = pct.toFixed(2) + "%";
+            }
+        } else if (IS_AVAILABLE && NEXT_EVT_START && NEXT_EVT_START !== "None") {
+            const startMs   = new Date(NEXT_EVT_START).getTime();
+            const remaining = startMs - now.getTime();
+
+            if (remaining <= 0) {
+                location.reload();
+                return;
+            }
+
+            if (primaryEl) {
+                primaryEl.textContent = "Free for " + formatCountdown(remaining);
+            }
+
+            if (progressEl && FREE_SINCE && FREE_SINCE !== "None") {
+                const freeSinceMs = new Date(FREE_SINCE).getTime();
+                const totalFree   = startMs - freeSinceMs;
+                const elapsed     = now.getTime() - freeSinceMs;
+                const pct         = Math.min(100, Math.max(0, (elapsed / totalFree) * 100));
+                progressEl.style.width = pct.toFixed(2) + "%";
+            }
+        }
+
+        if (secondaryEl && NEXT_EVT_START && NEXT_EVT_START !== "None") {
+            const startMs   = new Date(NEXT_EVT_START).getTime();
+            const remaining = startMs - now.getTime();
+            if (remaining > 0) {
+                secondaryEl.textContent = "Starts in " + formatCountdown(remaining);
+            } else {
+                location.reload();
+            }
+        }
+    }
+
+    tick();
+    setInterval(tick, 1000);
+
+    // ── Poll for booking changes instead of full-page meta refresh ──
+    const STATE_HASH_URL = "{% url 'event_schedule/room_state_hash' venue_id=room.venue_id room_id=room.pk %}";
+    let lastStateHash = null;
+    let hashPollFailures = 0;
+
+    function pollStateHash() {
+        fetch(STATE_HASH_URL)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                hashPollFailures = 0;
+                if (lastStateHash === null) {
+                    lastStateHash = data.hash;
+                } else if (data.hash !== lastStateHash) {
+                    location.reload();
+                }
+            })
+            .catch(function() {
+                hashPollFailures++;
+                // After 5 consecutive failures, do a full reload as fallback
+                if (hashPollFailures >= 5) location.reload();
+            });
+    }
+
+    pollStateHash();
+    setInterval(pollStateHash, 10000);
+    // Safety-net full reload every 5 minutes in case polling misses something
+    setTimeout(function() { location.reload(); }, 300000);
+
+    {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+    // ── Adhoc Booking ──
+    const BOOK_URL = "{% url 'event_schedule/book_adhoc' venue_id=room.venue_id room_id=room.pk %}";
+
+    let currentDurationMinutes = 15;
+    let useUntilNext = false;
+
+    function maxDuration() {
+        if (NEXT_EVT_START && NEXT_EVT_START !== "None") {
+            const minsUntilNext = Math.floor((new Date(NEXT_EVT_START).getTime() - serverTime()) / 60000);
+            return Math.min(240, Math.floor(minsUntilNext / 5) * 5) || 5;
+        }
+        return 240;
+    }
+
+    function openBookingModal() {
+        currentDurationMinutes = Math.min(15, maxDuration());
+        useUntilNext = false;
+        updateDurationDisplay();
+        const untilBtn = document.getElementById('untilNextBtn');
+        if (untilBtn) untilBtn.classList.remove('selected');
+        document.getElementById('bookingOverlay').style.display = 'block';
+        document.getElementById('bookingModal').style.display = 'flex';
+        document.getElementById('bookingError').style.display = 'none';
+        document.getElementById('confirmBtn').disabled = false;
+        document.getElementById('confirmBtn').textContent = 'Confirm Booking';
+    }
+
+    function closeBookingModal() {
+        document.getElementById('bookingModal').style.display = 'none';
+        document.getElementById('bookingOverlay').style.display = 'none';
+    }
+
+    function changeDuration(delta) {
+        useUntilNext = false;
+        const untilBtn = document.getElementById('untilNextBtn');
+        if (untilBtn) untilBtn.classList.remove('selected');
+        currentDurationMinutes = Math.min(maxDuration(), Math.max(5, currentDurationMinutes + delta));
+        updateDurationDisplay();
+    }
+
+    function selectUntilNext() {
+        useUntilNext = true;
+        const untilBtn = document.getElementById('untilNextBtn');
+        if (untilBtn) untilBtn.classList.add('selected');
+        document.getElementById('durationDisplay').textContent = 'Until next';
+    }
+
+    function updateDurationDisplay() {
+        const el = document.getElementById('durationDisplay');
+        if (!el) return;
+        if (currentDurationMinutes < 60) {
+            el.textContent = currentDurationMinutes + ' min';
+        } else {
+            const h = Math.floor(currentDurationMinutes / 60);
+            const m = currentDurationMinutes % 60;
+            el.textContent = h + 'h' + (m ? ' ' + m + 'm' : '');
+        }
+    }
+
+    function getCookie(name) {
+        const value = '; ' + document.cookie;
+        const parts = value.split('; ' + name + '=');
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    function confirmBooking() {
+        const btn = document.getElementById('confirmBtn');
+        btn.disabled = true;
+        btn.textContent = 'Booking…';
+
+        const duration = useUntilNext ? 0 : currentDurationMinutes;
+        const formData = new FormData();
+        formData.append('duration_minutes', duration);
+
+        fetch(BOOK_URL, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken')},
+            body: formData,
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                location.reload();
+            } else {
+                document.getElementById('bookingError').textContent = data.error || 'Booking failed.';
+                document.getElementById('bookingError').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Confirm Booking';
+            }
+        })
+        .catch(function() {
+            document.getElementById('bookingError').textContent = 'Network error. Please try again.';
+            document.getElementById('bookingError').style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Confirm Booking';
+        });
+    }
+    {% endif %}
+</script>
+
+</body>
+</html>

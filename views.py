@@ -1,8 +1,11 @@
 import datetime
+import hashlib
 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
-
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.http import require_POST
+from django.utils import timezone
 
 # Create your views here.
 from room_schedules.settings import HOUR_BREAK_POINT
@@ -16,7 +19,7 @@ def room_led_status(request, venue_id, room_id):
     - BUSY: room is currently in use
     """
     room = get_object_or_404(Room, pk=room_id)
-    now = datetime.datetime.now()
+    now = timezone.now()
     
     # Check if room is currently in use
     current_event = Event.objects.filter(
@@ -57,16 +60,9 @@ def show_venue(request, venue_id):
     return render(request, "room_schedules/dashboard.html", {'events': events, 'current_date': current_date})
 
 
-def show_room(request, venue_id, room_id):
-    room = get_object_or_404(Room, pk=room_id)
-    events = Event.objects.filter(room=room, end_time__gte=datetime.datetime.now(), cancelled=False)
-    current_date = (datetime.datetime.now() - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
-    return render(request, "room_schedules/dashboard.html", {'events': events, 'current_date': current_date, 'room': room})
-
-
-def show_room_display(request, venue_id, room_id):
-    room = get_object_or_404(Room, pk=room_id)
-    now = datetime.datetime.now()
+def _get_room_display_context(room):
+    """Build the shared template context for room display views."""
+    now = timezone.now()
     current_date = (now - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
 
     # Get today's remaining events (not yet ended, not cancelled)
@@ -133,7 +129,7 @@ def show_room_display(request, venue_id, room_id):
     next_event_start_iso = next_event.start_time.isoformat() if next_event else None
     free_since_iso = free_since.isoformat() if free_since else None
 
-    context = {
+    return {
         'room': room,
         'events': events,
         'current_date': current_date,
@@ -148,4 +144,106 @@ def show_room_display(request, venue_id, room_id):
         'free_since_iso': free_since_iso,
     }
 
-    return render(request, "room_schedules/room_display.html", context)
+
+def show_room(request, venue_id, room_id):
+    room = get_object_or_404(Room, pk=room_id)
+    context = _get_room_display_context(room)
+    return render(request, "room_schedules/room_screen.html", context)
+
+
+def show_room_tablet(request, venue_id, room_id):
+    room = get_object_or_404(Room, pk=room_id)
+    context = _get_room_display_context(room)
+    return render(request, "room_schedules/room_tablet.html", context)
+
+
+@csrf_exempt
+@require_POST
+def book_adhoc(request, venue_id, room_id):
+    """Create an adhoc booking for a currently-free O365 room.
+
+    POST params:
+      duration_minutes: int, multiple of 5, 5–240  (0 means "until next booking")
+    """
+    from room_schedules.o365_requests import create_adhoc_booking
+
+    room = get_object_or_404(Room, pk=room_id)
+
+    if not room.allow_tablet_booking or not room.o365_calendar_email:
+        return JsonResponse({'error': 'Room does not support adhoc booking.'}, status=400)
+
+    now = datetime.datetime.now()
+
+    current_event = Event.objects.filter(
+        room=room, start_time__lte=now, end_time__gte=now, cancelled=False
+    ).first()
+    if current_event:
+        return JsonResponse({'error': 'Room is currently in use.'}, status=409)
+
+    try:
+        duration_minutes = int(request.POST.get('duration_minutes', 0))
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Invalid duration.'}, status=400)
+
+    MAX_MINUTES = 240
+    next_event = Event.objects.filter(
+        room=room, start_time__gt=now, cancelled=False
+    ).order_by('start_time').first()
+
+    if duration_minutes == 0:
+        # "Until next booking" — cap at 4 hours
+        if next_event:
+            end_dt = min(next_event.start_time, now + datetime.timedelta(minutes=MAX_MINUTES))
+        else:
+            end_dt = now + datetime.timedelta(minutes=MAX_MINUTES)
+    else:
+        if duration_minutes < 5 or duration_minutes > MAX_MINUTES or duration_minutes % 5 != 0:
+            return JsonResponse({'error': 'Duration must be a multiple of 5 between 5 and 240.'}, status=400)
+        end_dt = now + datetime.timedelta(minutes=duration_minutes)
+        if next_event and next_event.start_time < end_dt:
+            end_dt = next_event.start_time
+
+    start_dt = now.replace(second=0, microsecond=0)
+
+    try:
+        o365_id = create_adhoc_booking(room.o365_calendar_email, start_dt, end_dt)
+    except RuntimeError as e:
+        return JsonResponse({'error': str(e)}, status=502)
+
+    Event.objects.create(
+        name="Adhoc Booking",
+        room=room,
+        organiser="",
+        start_time=start_dt,
+        end_time=end_dt,
+        o365_event_id=o365_id,
+    )
+
+    return JsonResponse({'ok': True})
+
+
+def room_state_hash(request, venue_id, room_id):
+    """Return a short hash of the room's current event state.
+
+    Clients poll this endpoint and only reload when the hash changes,
+    avoiding unnecessary full-page refreshes.
+    """
+    room = get_object_or_404(Room, pk=room_id)
+    now = datetime.datetime.now()
+
+    events = Event.objects.filter(
+        room=room,
+        end_time__gte=now,
+        cancelled=False,
+    ).order_by('start_time').values_list('pk', 'name', 'start_time', 'end_time', 'cancelled')
+
+    # Build a deterministic fingerprint from the event data
+    raw = '|'.join(
+        f'{pk},{name},{st.isoformat()},{et.isoformat()},{c}'
+        for pk, name, st, et, c in events
+    )
+    digest = hashlib.md5(raw.encode()).hexdigest()[:12]
+
+    response = JsonResponse({'hash': digest})
+    response['Cache-Control'] = 'no-store'
+    return response

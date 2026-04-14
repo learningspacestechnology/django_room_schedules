@@ -15,11 +15,13 @@ Including another URLconf
 """
 from django.urls import path
 
-from .views import show_venue, show_room, show_room_display, room_led_status
+from .views import show_venue, show_room, show_room_tablet, room_led_status, book_adhoc, room_state_hash
 
 urlpatterns = [
     path('<int:venue_id>', show_venue, name="event_schedule/venue"),
     path('<int:venue_id>/<int:room_id>', show_room, name="event_schedule/room"),
-    path('<int:venue_id>/<int:room_id>/tablet', show_room_display, name="event_schedule/room_display"),
+    path('<int:venue_id>/<int:room_id>/tablet', show_room_tablet, name="event_schedule/room_tablet"),
     path('<int:venue_id>/<int:room_id>/tablet/LED', room_led_status, name="event_schedule/room_led"),
+    path('<int:venue_id>/<int:room_id>/tablet/book', book_adhoc, name="event_schedule/book_adhoc"),
+    path('<int:venue_id>/<int:room_id>/state_hash', room_state_hash, name="event_schedule/room_state_hash"),
 ]

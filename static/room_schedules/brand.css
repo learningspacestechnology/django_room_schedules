@@ -1,0 +1,27 @@
+/* ── Brand palette — override these for other brands ── */
+:root {
+    --status-available: #2B9F5E;
+    --status-available-dark: #1F7A46;
+    --status-warning: #D4872E;
+    --status-in-use: #D14040;
+
+    --progress-track: #3A4556;
+    --progress-available: #3DBB78;
+    --progress-in-use: #E8B62C;
+    --progress-default: #2CA7A0;
+
+    --panel-bg: #1E2D3D;
+    --panel-label: #6F8898;
+    --panel-accent: #E8A825;
+    --panel-info: #4A9AD8;
+    --panel-active: #2CA7A0;
+    --panel-muted: #A8B8C4;
+
+    --modal-bg: #162230;
+    --modal-btn: #2E4052;
+    --modal-btn-active: #3D556A;
+    --modal-border: #4A607A;
+    --modal-muted: #8098AA;
+
+    --color-error: #E25555;
+}

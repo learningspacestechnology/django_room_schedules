@@ -3,21 +3,10 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=1280">
-    <meta http-equiv="refresh" content="60">
-    <title>{{ room.name }} – Edinburgh University Students' Association</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ room.name }}</title>
+    <link rel="stylesheet" href="{% static 'room_schedules/brand.css' %}">
     <style>
-        /*
-         * Edinburgh University Students' Association – Brand Palette
-         * Purple:  #592F65 / #B37DB1
-         * Blue:    #404692 / #5B97D2
-         * Teal:    #195F65 / #63B0A9
-         * Red:     #C40050 / #E1A388
-         * Orange:  #D16837 / #EEC216
-         * Green:   #2D7F44 / #ACC540
-         * Grey:    #4C4C4C / #D4D4D4
-         * Font:    Source Sans Pro (local)  |  Line-height: 105%
-         */
 
         @font-face {
             font-family: "Source Sans Pro";
@@ -50,13 +39,61 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Full-width colour bands that bleed behind #app to fill the screen edges */
+        .bg-bands {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            pointer-events: none;
+        }
+        .bg-bands .bg-header {
+            flex: 0 0 45vh;
+            transition: background-color 0.6s ease;
+        }
+        .bg-bands .bg-header.available { background: var(--status-available); }
+        .bg-bands .bg-header.warning   { background: var(--status-warning); }
+        .bg-bands .bg-header.in-use    { background: var(--status-in-use); }
+        .bg-bands .bg-progress {
+            flex: 0 0 1.5vh;
+            background: var(--progress-track);
+            overflow: hidden;
+            transition: background-color 0.6s ease;
+        }
+        .bg-bands .bg-progress.available { background: var(--status-available); }
+        .bg-bands .bg-progress.warning   { background: var(--status-warning); }
+        .bg-bands .bg-progress.in-use    { background: var(--status-in-use); }
+        .bg-bands .bg-bottom {
+            flex: 1;
+            background: var(--panel-bg);
+        }
+
+        /* Fixed-size canvas — scaled to fill screen height by JS */
+        #app {
             font-family: "Source Sans Pro", "Calibri", sans-serif;
             width: 1280px;
             height: 800px;
             overflow: hidden;
             color: #fff;
             line-height: 105%;
+            transform-origin: center center;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
         }
 
         /* ── Header (3-column: logo | venue/room/status | clock) ── */
@@ -69,10 +106,11 @@
             justify-content: center;
             padding: 0 40px;
             transition: background-color 0.6s ease;
+            flex-shrink: 0;
         }
-        .header.available { background: #2D7F44; }
-        .header.warning  { background: #D16837; }
-        .header.in-use    { background: #C40050; }
+        .header.available { background: var(--status-available); }
+        .header.warning  { background: var(--status-warning); }
+        .header.in-use    { background: var(--status-in-use); }
 
         /* Left column: logo */
         .header-left {
@@ -175,22 +213,24 @@
         .progress-container {
             width: 100%;
             height: 12px;
-            background: #4C4C4C;
+            flex-shrink: 0;
+            background: var(--progress-track);
+            overflow: hidden;
         }
         .progress-bar {
             height: 100%;
-            background: #63B0A9;
+            background: var(--progress-default);
             width: 0%;
             transition: width 1s linear;
         }
-        .progress-bar.available-bar { background: #ACC540; }
-        .progress-bar.in-use-bar    { background: #EEC216; }
+        .progress-bar.available-bar { background: var(--progress-available); }
+        .progress-bar.in-use-bar    { background: var(--progress-in-use); }
 
         /* ── Bottom section (800 - 360 - 12 = 428px) ── */
         .bottom {
             width: 100%;
-            height: 428px;
-            background: #592F65;
+            flex: 1;
+            background: var(--panel-bg);
             display: flex;
             overflow: hidden;
         }
@@ -211,7 +251,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 3px;
-            color: #B37DB1;
+            color: var(--panel-label);
             margin-bottom: 14px;
         }
         .next-event-panel .event-name {
@@ -228,7 +268,7 @@
         }
         .next-event-panel .event-organiser {
             font-size: 20px;
-            color: #D4D4D4;
+            color: var(--panel-muted);
             margin-bottom: 14px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -237,17 +277,17 @@
         .next-event-panel .event-time {
             font-size: 24px;
             font-weight: 600;
-            color: #EEC216;
+            color: var(--panel-accent);
         }
         .next-event-panel .countdown-secondary {
             font-size: 22px;
             margin-top: 8px;
-            color: #5B97D2;
+            color: var(--panel-info);
             font-weight: 400;
         }
         .next-event-panel .nothing {
             font-size: 24px;
-            color: #B37DB1;
+            color: var(--panel-label);
         }
 
         /* ── Schedule list ── */
@@ -261,12 +301,12 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 3px;
-            color: #B37DB1;
+            color: var(--panel-label);
             margin-bottom: 14px;
         }
         .schedule-list .date-line {
             font-size: 20px;
-            color: #D4D4D4;
+            color: var(--panel-muted);
             margin-bottom: 16px;
         }
         .schedule-item {
@@ -280,14 +320,14 @@
             border-radius: 6px;
             padding: 10px 12px;
             margin: 0 -12px;
-            border-left: 4px solid #EEC216;
+            border-left: 4px solid var(--panel-accent);
         }
         .schedule-item .time {
             font-size: 20px;
             font-weight: 600;
             width: 160px;
             flex-shrink: 0;
-            color: #63B0A9;
+            color: var(--panel-active);
         }
         .schedule-item .details {
             flex: 1;
@@ -296,20 +336,144 @@
         .schedule-item .details .name {
             font-size: 20px;
             font-weight: 600;
+            line-height: 1.3;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .schedule-item .details .organiser {
             font-size: 16px;
-            color: #D4D4D4;
+            color: var(--panel-muted);
+            line-height: 1.3;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* ── Adhoc booking button ── */
+        .book-btn {
+            margin-top: 20px;
+            padding: 16px 40px;
+            font-size: 28px;
+            font-weight: 600;
+            font-family: inherit;
+            background: var(--status-available);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+        .book-btn:active { background: var(--status-available-dark); }
+
+        /* ── Adhoc booking modal ── */
+        .booking-modal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+        .booking-modal-inner {
+            background: var(--modal-bg);
+            border-radius: 16px;
+            padding: 48px 56px;
+            text-align: center;
+            min-width: 520px;
+            font-family: "Source Sans Pro", "Calibri", sans-serif;
+        }
+        .booking-title {
+            font-size: 40px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .booking-subtitle {
+            font-size: 24px;
+            color: var(--panel-muted);
+            margin-bottom: 40px;
+        }
+        .duration-stepper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .step-btn {
+            width: 72px; height: 72px;
+            font-size: 40px; line-height: 1;
+            background: var(--modal-btn);
+            color: #fff;
+            border: none; border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .step-btn:active { background: var(--modal-btn-active); }
+        .duration-display {
+            font-size: 48px;
+            font-weight: 700;
+            color: #fff;
+            min-width: 160px;
+        }
+        .until-next-btn {
+            display: block;
+            width: 100%;
+            margin-bottom: 32px;
+            padding: 16px;
+            font-size: 22px;
+            font-family: inherit;
+            background: var(--modal-btn);
+            color: var(--modal-muted);
+            border: 2px solid var(--modal-border);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .until-next-btn.selected,
+        .until-next-btn:active { border-color: var(--panel-active); color: var(--panel-active); }
+        .booking-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .cancel-btn {
+            padding: 16px 40px;
+            font-size: 26px;
+            font-family: inherit;
+            background: var(--modal-btn);
+            color: var(--panel-muted);
+            border: none; border-radius: 8px; cursor: pointer;
+        }
+        .confirm-btn {
+            padding: 16px 48px;
+            font-size: 26px;
+            font-family: inherit;
+            background: var(--status-available);
+            color: #fff;
+            border: none; border-radius: 8px; cursor: pointer;
+            font-weight: 600;
+        }
+        .confirm-btn:disabled { background: var(--modal-btn-active); cursor: default; }
+        .booking-error {
+            margin-top: 16px;
+            color: var(--color-error); font-size: 20px;
+        }
     </style>
 </head>
 <body>
+
+<!-- Full-width colour bands — bleed header/progress/bottom colours to screen edges -->
+<div class="bg-bands">
+    <div class="bg-header {% if is_available %}{% if is_warning %}warning{% else %}available{% endif %}{% else %}in-use{% endif %}"></div>
+    <div class="bg-progress {% if not is_available %}in-use{% elif next_event %}{% if is_warning %}warning{% else %}available{% endif %}{% endif %}"></div>
+    <div class="bg-bottom"></div>
+</div>
+
+<div id="bgOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:15;"></div>
+
+<div id="app">
 
     <!-- ── Header: logo | venue/room/status | clock ── -->
     <div class="header {% if is_available %}{% if is_warning %}warning{% else %}available{% endif %}{% else %}in-use{% endif %}" id="statusBanner">
@@ -346,7 +510,7 @@
         </div>
     </div>
 
-    <!-- ── Progress bar ── -->
+    <!-- ── Progress bar (background from .bg-bands, fill rendered here inside scaled #app) ── -->
     <div class="progress-container">
         <div class="progress-bar {% if is_available %}available-bar{% else %}in-use-bar{% endif %}" id="progressBar"></div>
     </div>
@@ -367,6 +531,9 @@
             {% else %}
                 <div class="nothing">No more bookings today</div>
             {% endif %}
+            {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+            <button class="book-btn" id="bookBtn" onclick="openBookingModal()">Book Now</button>
+            {% endif %}
         </div>
 
         <!-- Today's schedule -->
@@ -386,7 +553,55 @@
 
     </div>
 
+
+</div>
+
+{% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+<div id="bookingModal" style="display:none;" class="booking-modal">
+    <div class="booking-modal-inner">
+        <div class="booking-title">Book this room</div>
+        <div class="booking-subtitle">How long do you need it?</div>
+        <div class="duration-stepper">
+            <button class="step-btn" onclick="changeDuration(-5)">–</button>
+            <div class="duration-display" id="durationDisplay">15 min</div>
+            <button class="step-btn" onclick="changeDuration(5)">+</button>
+        </div>
+        {% if next_event %}
+        <button class="until-next-btn" id="untilNextBtn" onclick="selectUntilNext()">
+            Until next booking ({{ next_event.start_time|time:'H:i' }})
+        </button>
+        {% endif %}
+        <div class="booking-actions">
+            <button class="cancel-btn" onclick="closeBookingModal()">Cancel</button>
+            <button class="confirm-btn" id="confirmBtn" onclick="confirmBooking()">Confirm Booking</button>
+        </div>
+        <div class="booking-error" id="bookingError" style="display:none;"></div>
+    </div>
+</div>
+{% endif %}
+
     <script>
+        // ── Scale #app to fill the viewport while preserving aspect ratio ──
+        const APP_W = 1280, APP_H = 800;
+        const appEl = document.getElementById("app");
+
+        function applyScale() {
+            const scale = window.innerHeight / APP_H;
+            appEl.style.transform = "scale(" + scale + ")";
+            // Scale the booking modal to match
+            const modalEl = document.getElementById('bookingModal');
+            if (modalEl) modalEl.style.transform = "scale(" + scale + ")";
+            // Read actual rendered heights from the transformed #app elements so
+            // bg-bands bands align pixel-perfectly (avoids fractional-px rounding drift)
+            const bgHeader   = document.querySelector('.bg-header');
+            const bgProgress = document.querySelector('.bg-progress');
+            if (bgHeader)   bgHeader.style.flexBasis   = appEl.querySelector('.header').getBoundingClientRect().height + "px";
+            if (bgProgress) bgProgress.style.flexBasis = appEl.querySelector('.progress-container').getBoundingClientRect().height + "px";
+        }
+
+        applyScale();
+        window.addEventListener("resize", applyScale);
+
         // ── Server-provided timestamps ──
         const NOW_ISO           = "{{ now_iso }}";
         const CURRENT_EVT_START = "{{ current_event_start_iso }}";
@@ -493,6 +708,134 @@
         // Run immediately, then every second
         tick();
         setInterval(tick, 1000);
+
+        // ── Poll for booking changes instead of full-page meta refresh ──
+        const STATE_HASH_URL = "{% url 'event_schedule/room_state_hash' venue_id=room.venue_id room_id=room.pk %}";
+        let lastStateHash = null;
+        let hashPollFailures = 0;
+
+        function pollStateHash() {
+            fetch(STATE_HASH_URL)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    hashPollFailures = 0;
+                    if (lastStateHash === null) {
+                        lastStateHash = data.hash;
+                    } else if (data.hash !== lastStateHash) {
+                        location.reload();
+                    }
+                })
+                .catch(function() {
+                    hashPollFailures++;
+                    // After 5 consecutive failures, do a full reload as fallback
+                    if (hashPollFailures >= 5) location.reload();
+                });
+        }
+
+        pollStateHash();
+        setInterval(pollStateHash, 10000);
+        // Safety-net full reload every 5 minutes in case polling misses something
+        setTimeout(function() { location.reload(); }, 300000);
+
+        {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+        // ── Adhoc Booking ──
+        const BOOK_URL = "{% url 'event_schedule/book_adhoc' venue_id=room.venue_id room_id=room.pk %}";
+
+        let currentDurationMinutes = 15;
+        let useUntilNext = false;
+
+        function maxDuration() {
+            if (NEXT_EVT_START && NEXT_EVT_START !== "None") {
+                const minsUntilNext = Math.floor((new Date(NEXT_EVT_START).getTime() - serverTime()) / 60000);
+                return Math.min(240, Math.floor(minsUntilNext / 5) * 5) || 5;
+            }
+            return 240;
+        }
+
+        function openBookingModal() {
+            currentDurationMinutes = Math.min(15, maxDuration());
+            useUntilNext = false;
+            updateDurationDisplay();
+            const untilBtn = document.getElementById('untilNextBtn');
+            if (untilBtn) untilBtn.classList.remove('selected');
+            document.getElementById('bgOverlay').style.display = 'block';
+            document.getElementById('bookingModal').style.display = 'flex';
+            document.getElementById('bookingError').style.display = 'none';
+            document.getElementById('confirmBtn').disabled = false;
+            document.getElementById('confirmBtn').textContent = 'Confirm Booking';
+        }
+
+        function closeBookingModal() {
+            document.getElementById('bookingModal').style.display = 'none';
+            document.getElementById('bgOverlay').style.display = 'none';
+        }
+
+        function changeDuration(delta) {
+            useUntilNext = false;
+            const untilBtn = document.getElementById('untilNextBtn');
+            if (untilBtn) untilBtn.classList.remove('selected');
+            currentDurationMinutes = Math.min(maxDuration(), Math.max(5, currentDurationMinutes + delta));
+            updateDurationDisplay();
+        }
+
+        function selectUntilNext() {
+            useUntilNext = true;
+            const untilBtn = document.getElementById('untilNextBtn');
+            if (untilBtn) untilBtn.classList.add('selected');
+            document.getElementById('durationDisplay').textContent = 'Until next';
+        }
+
+        function updateDurationDisplay() {
+            const el = document.getElementById('durationDisplay');
+            if (!el) return;
+            if (currentDurationMinutes < 60) {
+                el.textContent = currentDurationMinutes + ' min';
+            } else {
+                const h = Math.floor(currentDurationMinutes / 60);
+                const m = currentDurationMinutes % 60;
+                el.textContent = h + 'h' + (m ? ' ' + m + 'm' : '');
+            }
+        }
+
+        function getCookie(name) {
+            const value = '; ' + document.cookie;
+            const parts = value.split('; ' + name + '=');
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function confirmBooking() {
+            const btn = document.getElementById('confirmBtn');
+            btn.disabled = true;
+            btn.textContent = 'Booking…';
+
+            const duration = useUntilNext ? 0 : currentDurationMinutes;
+            const formData = new FormData();
+            formData.append('duration_minutes', duration);
+
+            fetch(BOOK_URL, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCookie('csrftoken')},
+                body: formData,
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    location.reload();
+                } else {
+                    document.getElementById('bookingError').textContent = data.error || 'Booking failed.';
+                    document.getElementById('bookingError').style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Confirm Booking';
+                }
+            })
+            .catch(function() {
+                document.getElementById('bookingError').textContent = 'Network error. Please try again.';
+                document.getElementById('bookingError').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Confirm Booking';
+            });
+        }
+        {% endif %}
     </script>
 
 </body>
