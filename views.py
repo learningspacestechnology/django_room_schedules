@@ -6,6 +6,7 @@ from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
+from django.utils import timezone
 
 
 def get_client_ip(request):
@@ -43,7 +44,7 @@ def room_led_status(request, venue_id, room_id):
     - BUSY: room is currently in use
     """
     room = get_object_or_404(Room, pk=room_id)
-    now = datetime.datetime.now()
+    now = timezone.now()
     
     # Check if room is currently in use
     current_event = Event.objects.filter(
@@ -179,7 +180,7 @@ def building_state_hash(request, venue_id):
 
 def _get_room_display_context(room):
     """Build the shared template context for room display views."""
-    now = datetime.datetime.now()
+    now = timezone.now()
     current_date = (now - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
 
     # Get today's remaining events (not yet ended, not cancelled)
@@ -270,7 +271,6 @@ def _is_legacy_browser(user_agent):
     return 'Version/11.0 Safari' in user_agent or 'AppleWebKit/605.1.15' in user_agent
 
 
-@ensure_csrf_cookie
 def show_room(request, venue_id, room_id):
     room = get_object_or_404(Room, pk=room_id)
     context = _get_room_display_context(room)

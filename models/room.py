@@ -7,7 +7,7 @@ from room_schedules.models import Building
 class Room(models.Model):
     name = models.CharField(max_length=100)
     building = models.ForeignKey(Building, on_delete=models.CASCADE)
-    o365_calendar_email = models.EmailField(unique=True, null=True, blank=True)
+    o365_calendar_email = models.EmailField(unique=True, null=True, blank=False)
     allow_booking = models.BooleanField(
         default=False,
         help_text="Allow adhoc bookings to be made from the display screen.",

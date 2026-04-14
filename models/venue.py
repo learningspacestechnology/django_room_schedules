@@ -24,7 +24,7 @@ class Building(models.Model):
         from room_schedules.models import Room, Event
         from room_schedules import o365_requests
 
-        for room in self.room_set.filter(o365_calendar_email__isnull=False).exclude(o365_calendar_email=''):
+        for room in self.room_set.filter(o365_calendar_email__isnull=False):
             events = o365_requests.get_todays_events(room.o365_calendar_email)
             o365_ids = []
             new_events = 0
