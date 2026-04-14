@@ -1,23 +1,23 @@
 from django.db import models
 from django.urls import reverse
 
-from room_schedules.models import Venue
+from room_schedules.models import Building
 
 
 class Room(models.Model):
     name = models.CharField(max_length=100)
-    venue = models.ForeignKey(Venue, on_delete=models.CASCADE)
-    artifax_id = models.IntegerField(unique=True, null=True, blank=False)
+    building = models.ForeignKey(Building, on_delete=models.CASCADE)
     o365_calendar_email = models.EmailField(unique=True, null=True, blank=False)
-    allow_tablet_booking = models.BooleanField(
+    allow_booking = models.BooleanField(
         default=False,
-        help_text="Allow adhoc bookings to be made from the tablet display screen.",
+        help_text="Allow adhoc bookings to be made from the display screen.",
     )
+    ip_address = models.GenericIPAddressField(null=True, blank=True, unique=True, verbose_name="IP address")
 
     def __str__(self):
         return "{}: {}".format(self.pk, self.name)
 
     def get_absolute_url(self):
-        return reverse('event_schedule/room', args=[str(self.venue.id), str(self.id)])
+        return reverse('room_schedule/room', args=[str(self.building.id), str(self.id)])
 
 

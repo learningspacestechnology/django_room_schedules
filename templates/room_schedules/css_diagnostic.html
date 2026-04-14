@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CSS Diagnostic</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; font-size: 14px; padding: 10px; background: #f5f5f5; }
+        h2 { margin: 12px 0 6px; font-size: 16px; }
+        .info { background: #fff; border: 1px solid #ccc; padding: 8px; margin-bottom: 8px; word-break: break-all; }
+        .test-box { border: 2px solid #333; margin-bottom: 10px; padding: 0; }
+        .test-label { background: #333; color: #fff; padding: 4px 8px; font-size: 12px; }
+        .pass { background: #28a745; color: #fff; padding: 4px 8px; font-weight: bold; }
+        .fail { background: #dc3545; color: #fff; padding: 4px 8px; font-weight: bold; }
+
+        /* Test 1: CSS Grid with minmax */
+        .grid-test {
+            display: grid;
+            grid-template-columns: minmax(100px, 1fr) auto minmax(100px, 1fr);
+            column-gap: 10px;
+            background: #e9ecef;
+            padding: 8px;
+        }
+        .grid-test > div { background: #007bff; color: #fff; padding: 8px; text-align: center; }
+
+        /* Test 2: Simple Grid without minmax */
+        .grid-simple-test {
+            display: grid;
+            grid-template-columns: 100px 1fr auto;
+            column-gap: 10px;
+            background: #e9ecef;
+            padding: 8px;
+        }
+        .grid-simple-test > div { background: #17a2b8; color: #fff; padding: 8px; text-align: center; }
+
+        /* Test 3: Flexbox */
+        .flex-test {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: #e9ecef;
+            padding: 8px;
+        }
+        .flex-test > div { background: #28a745; color: #fff; padding: 8px; text-align: center; }
+        .flex-test > .flex-shrink { flex-shrink: 0; }
+        .flex-test > .flex-grow { flex: 1 1 auto; }
+
+        /* Test 4: Flexbox without gap (older support) */
+        .flex-nogap-test {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            justify-content: space-between;
+            background: #e9ecef;
+            padding: 8px;
+        }
+        .flex-nogap-test > div { background: #fd7e14; color: #fff; padding: 8px; margin-right: 10px; text-align: center; }
+
+        /* Test 5: vw/vh units */
+        .vw-test {
+            width: 50vw;
+            height: 30px;
+            background: #6f42c1;
+        }
+
+        /* Test 6: calc() */
+        .calc-test {
+            width: calc(100% - 40px);
+            height: 30px;
+            background: #e83e8c;
+            margin-left: 20px;
+        }
+
+        /* Test 7: CSS custom properties */
+        .var-test {
+            --test-color: #20c997;
+            background: var(--test-color);
+            width: 200px;
+            height: 30px;
+        }
+
+        /* Test 8: overflow test - the actual problem scenario */
+        .overflow-parent {
+            width: 100%;
+            background: #041e42;
+            padding: 8px;
+            display: grid;
+            grid-template-columns: minmax(16rem, 1fr) auto minmax(16rem, 1fr);
+            column-gap: 4rem;
+            align-items: center;
+        }
+        .overflow-parent > div { color: #fff; padding: 4px; }
+    </style>
+</head>
+<body>
+    <h1>CSS Diagnostic Page</h1>
+
+    <h2>Device Info</h2>
+    <div class="info" id="uaInfo">Loading...</div>
+    <div class="info" id="screenInfo">Loading...</div>
+    <div class="info" id="viewportInfo">Loading...</div>
+
+    <h2>Test 1: CSS Grid with minmax() — EdGEL default</h2>
+    <div class="test-box">
+        <div class="test-label">grid-template-columns: minmax(100px,1fr) auto minmax(100px,1fr)</div>
+        <div class="grid-test">
+            <div>Logo</div>
+            <div>Room Name</div>
+            <div>Clock</div>
+        </div>
+    </div>
+
+    <h2>Test 2: CSS Grid simple columns</h2>
+    <div class="test-box">
+        <div class="test-label">grid-template-columns: 100px 1fr auto</div>
+        <div class="grid-simple-test">
+            <div>Logo</div>
+            <div>Room Name</div>
+            <div>Clock</div>
+        </div>
+    </div>
+
+    <h2>Test 3: Flexbox with gap</h2>
+    <div class="test-box">
+        <div class="test-label">display:flex; gap:10px</div>
+        <div class="flex-test">
+            <div class="flex-shrink">Logo</div>
+            <div class="flex-grow">Room Name</div>
+            <div class="flex-shrink">Clock</div>
+        </div>
+    </div>
+
+    <h2>Test 4: Flexbox without gap (margin instead)</h2>
+    <div class="test-box">
+        <div class="test-label">display:flex; margin-right:10px (no gap property)</div>
+        <div class="flex-nogap-test">
+            <div>Logo</div>
+            <div style="flex:1 1 auto;">Room Name</div>
+            <div>Clock</div>
+        </div>
+    </div>
+
+    <h2>Test 5: Viewport units (50vw wide bar)</h2>
+    <div class="test-box">
+        <div class="test-label">width: 50vw</div>
+        <div class="vw-test"></div>
+    </div>
+
+    <h2>Test 6: calc()</h2>
+    <div class="test-box">
+        <div class="test-label">width: calc(100% - 40px)</div>
+        <div class="calc-test"></div>
+    </div>
+
+    <h2>Test 7: CSS Custom Properties (var)</h2>
+    <div class="test-box">
+        <div class="test-label">background: var(--test-color) — green if supported</div>
+        <div class="var-test"></div>
+    </div>
+
+    <h2>Test 8: Exact EdGEL header layout (the problem)</h2>
+    <div class="test-box">
+        <div class="test-label">minmax(16rem,1fr) auto minmax(16rem,1fr) gap:4rem padding:4vw</div>
+        <div class="overflow-parent" style="padding-left:4vw;padding-right:4vw;">
+            <div style="background:#28a745;">Logo col</div>
+            <div style="background:#ffc107;color:#333;">Room Name</div>
+            <div style="background:#dc3545;text-align:right;">15:42 Mon 24 Mar</div>
+        </div>
+        <div id="overflowResult" style="padding:4px 8px;"></div>
+    </div>
+
+    <h2>JS Feature Detection Results</h2>
+    <div id="jsResults">Loading...</div>
+
+    <script>
+        // Device info
+        document.getElementById('uaInfo').textContent = 'User Agent: ' + navigator.userAgent;
+        document.getElementById('screenInfo').textContent = 'Screen: ' + screen.width + 'x' + screen.height + ' | DevicePixelRatio: ' + (window.devicePixelRatio || 'N/A');
+        document.getElementById('viewportInfo').textContent = 'Viewport: ' + window.innerWidth + 'x' + window.innerHeight + ' | DocumentElement: ' + document.documentElement.clientWidth + 'x' + document.documentElement.clientHeight;
+
+        // Overflow check
+        var op = document.querySelector('.overflow-parent');
+        var overflowResult = document.getElementById('overflowResult');
+        if (op) {
+            if (op.scrollWidth > op.clientWidth) {
+                overflowResult.innerHTML = '<span class="fail">OVERFLOWS — scrollWidth=' + op.scrollWidth + ' clientWidth=' + op.clientWidth + '</span>';
+            } else {
+                overflowResult.innerHTML = '<span class="pass">FITS — scrollWidth=' + op.scrollWidth + ' clientWidth=' + op.clientWidth + '</span>';
+            }
+        }
+
+        // JS feature detection
+        var results = [];
+        var el = document.createElement('div');
+
+        // CSS Grid
+        el.style.display = 'grid';
+        results.push('CSS Grid (display:grid): ' + (el.style.display === 'grid' ? 'YES' : 'NO'));
+
+        // Flexbox
+        el.style.display = 'flex';
+        results.push('Flexbox (display:flex): ' + (el.style.display === 'flex' ? 'YES' : 'NO'));
+
+        // gap on flex
+        el.style.display = 'flex';
+        el.style.gap = '10px';
+        results.push('Flex gap: ' + (el.style.gap === '10px' ? 'YES' : 'NO'));
+
+        // CSS Custom Properties
+        el.style.setProperty('--test', '1');
+        var hasVar = getComputedStyle(document.documentElement).getPropertyValue('--test') !== undefined;
+        results.push('CSS Custom Properties: ' + (CSS.supports && CSS.supports('(--a: 0)') ? 'YES' : 'MAYBE'));
+
+        // CSS.supports
+        results.push('CSS.supports available: ' + (typeof CSS !== 'undefined' && typeof CSS.supports === 'function' ? 'YES' : 'NO'));
+
+        if (typeof CSS !== 'undefined' && typeof CSS.supports === 'function') {
+            results.push('  grid-template-columns minmax: ' + (CSS.supports('grid-template-columns', 'minmax(16rem, 1fr) auto minmax(16rem, 1fr)') ? 'YES' : 'NO'));
+            results.push('  display grid: ' + (CSS.supports('display', 'grid') ? 'YES' : 'NO'));
+            results.push('  display flex: ' + (CSS.supports('display', 'flex') ? 'YES' : 'NO'));
+            results.push('  gap: ' + (CSS.supports('gap', '10px') ? 'YES' : 'NO'));
+        }
+
+        // Resize Observer
+        results.push('ResizeObserver: ' + (typeof ResizeObserver !== 'undefined' ? 'YES' : 'NO'));
+
+        // Fetch
+        results.push('Fetch API: ' + (typeof fetch !== 'undefined' ? 'YES' : 'NO'));
+
+        var html = '';
+        for (var i = 0; i < results.length; i++) {
+            html += '<div class="info">' + results[i] + '</div>';
+        }
+        document.getElementById('jsResults').innerHTML = html;
+    </script>
+</body>
+</html>

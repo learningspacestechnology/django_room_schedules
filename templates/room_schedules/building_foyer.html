@@ -1,0 +1,135 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ building.name }}</title>
+    <link rel="stylesheet" href="{% static 'room_schedules/edgel/css/edgel-blue-university.min.css' %}">
+    <style>
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+
+        .room-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .room-card {
+            border-left: 6px solid;
+            border-radius: 0.5rem;
+        }
+        .room-card.status-available { border-left-color: #2B9F5E; }
+        .room-card.status-warning   { border-left-color: #D4872E; }
+        .room-card.status-in-use    { border-left-color: #D14040; }
+
+        .room-card .card-body { padding: 1.2rem 1.5rem; }
+
+        .room-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+        }
+
+        .room-status {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.6rem;
+        }
+        .room-status.available { color: #2B9F5E; }
+        .room-status.warning   { color: #D4872E; }
+        .room-status.in-use    { color: #D14040; }
+
+        .room-event-name {
+            font-size: 1rem;
+            color: #333;
+            margin-bottom: 0.2rem;
+        }
+
+        .room-event-time {
+            font-size: 0.9rem;
+            color: #707070;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card card-display" data-bs-page-reload-seconds="300" data-bs-browser-time="true" data-bs-page-hold-seconds="15">
+
+    <!-- Header -->
+    <header class="card-header">
+        <img class="masthead-logo" src="{% static 'room_schedules/edgel/media/uoe-logo.png' %}" alt="University of Edinburgh">
+        <h1 class="display-heading">{{ building.name }}</h1>
+        <div class="display-clock"></div>
+    </header>
+
+    <!-- Body: room status cards, paginated by Display plugin -->
+    <main class="card-body" data-provide="uoe-display">
+        <div class="room-grid">
+            {% for rs in room_statuses %}
+            <div class="card room-card status-{% if not rs.is_available %}in-use{% elif rs.is_warning %}warning{% else %}available{% endif %}">
+                <div class="card-body">
+                    <div class="room-name">{{ rs.room.name }}</div>
+                    {% if not rs.is_available %}
+                        <div class="room-status in-use">In Use</div>
+                        <div class="room-event-name">{{ rs.current_event.name }}</div>
+                        <div class="room-event-time">Until {{ rs.current_event.end_time|time:"H:i" }}</div>
+                        {% if rs.next_event %}
+                        <div class="room-event-time">Next: {{ rs.next_event.name }} at {{ rs.next_event.start_time|time:"H:i" }}</div>
+                        {% endif %}
+                    {% elif rs.is_warning %}
+                        <div class="room-status warning">Available</div>
+                        <div class="room-event-time">Next: {{ rs.next_event.name }} at {{ rs.next_event.start_time|time:"H:i" }}</div>
+                    {% else %}
+                        <div class="room-status available">Available</div>
+                        {% if rs.next_event %}
+                        <div class="room-event-time">Next: {{ rs.next_event.name }} at {{ rs.next_event.start_time|time:"H:i" }}</div>
+                        {% else %}
+                        <div class="room-event-time">No more bookings today</div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="card-footer">
+        <div class="small text-end" data-provide="uoe-refreshed">Last refreshed:</div>
+    </footer>
+
+</div>
+
+<script src="{% static 'room_schedules/edgel/js/edgel.bundle.min.js' %}"></script>
+<script>EdGEL.Consent.Default.disabled = true;</script>
+<script>
+    // ── Poll for changes ──
+    var STATE_HASH_URL = "{% url 'room_schedule/building_state_hash' venue_id=building.pk %}";
+    var lastStateHash = null;
+    var hashPollFailures = 0;
+
+    function pollStateHash() {
+        fetch(STATE_HASH_URL)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                hashPollFailures = 0;
+                if (lastStateHash === null) {
+                    lastStateHash = data.hash;
+                } else if (data.hash !== lastStateHash) {
+                    location.reload();
+                }
+            })
+            .catch(function() {
+                hashPollFailures++;
+                if (hashPollFailures >= 5) location.reload();
+            });
+    }
+
+    pollStateHash();
+    setInterval(pollStateHash, 10000);
+</script>
+
+</body>
+</html>

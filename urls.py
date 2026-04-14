@@ -15,13 +15,16 @@ Including another URLconf
 """
 from django.urls import path
 
-from .views import show_venue, show_room, show_room_tablet, room_led_status, book_adhoc, room_state_hash
+from .views import show_building_grid, show_building_foyer, building_state_hash, show_room, room_led_status, book_adhoc, room_state_hash, css_diagnostic, auto_route
 
 urlpatterns = [
-    path('<int:venue_id>', show_venue, name="event_schedule/venue"),
-    path('<int:venue_id>/<int:room_id>', show_room, name="event_schedule/room"),
-    path('<int:venue_id>/<int:room_id>/tablet', show_room_tablet, name="event_schedule/room_tablet"),
-    path('<int:venue_id>/<int:room_id>/tablet/LED', room_led_status, name="event_schedule/room_led"),
-    path('<int:venue_id>/<int:room_id>/tablet/book', book_adhoc, name="event_schedule/book_adhoc"),
-    path('<int:venue_id>/<int:room_id>/state_hash', room_state_hash, name="event_schedule/room_state_hash"),
+    path('', auto_route, name="room_schedule/auto_route"),
+    path('<int:venue_id>', show_building_grid, name="room_schedule/building"),
+    path('<int:venue_id>/foyer', show_building_foyer, name="room_schedule/building_foyer"),
+    path('<int:venue_id>/state_hash', building_state_hash, name="room_schedule/building_state_hash"),
+    path('<int:venue_id>/<int:room_id>', show_room, name="room_schedule/room"),
+    path('<int:venue_id>/<int:room_id>/LED', room_led_status, name="room_schedule/room_led"),
+    path('<int:venue_id>/<int:room_id>/book', book_adhoc, name="room_schedule/book_adhoc"),
+    path('<int:venue_id>/<int:room_id>/state_hash', room_state_hash, name="room_schedule/room_state_hash"),
+    path('<int:venue_id>/<int:room_id>/diagnostic', css_diagnostic, name="room_schedule/css_diagnostic"),
 ]

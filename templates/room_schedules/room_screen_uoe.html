@@ -1,0 +1,466 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ room.name }} – {{ room.building.name }}</title>
+    {% if compact %}
+    <script>
+        /* ResizeObserver polyfill for legacy browsers */
+        (function() {
+            if (!window.ResizeObserver) {
+                window.ResizeObserver = class {
+                    constructor(fn) { this.fn = fn; }
+                    observe(el) {
+                        var self = this;
+                        setTimeout(function() {
+                            self.fn([{ target: el, contentRect: el.getBoundingClientRect() }]);
+                        }, 0);
+                    }
+                    unobserve() {}
+                    disconnect() {}
+                };
+            }
+        })();
+    </script>
+    <script src="{% static 'room_schedules/edgel/js/edgel.legacy.min.js' %}"></script>
+    <script>EdGEL.Consent.Default.disabled = true;</script>
+    {% endif %}
+    <link rel="stylesheet" href="{% static 'room_schedules/edgel/css/edgel-blue-university.min.css' %}">
+    <style>
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+
+        /* Tighten header spacing on narrow displays so long room names don't push the clock off */
+        @media (max-width: 900px) {
+            .card-display > .card-header {
+                column-gap: 1rem;
+                --edgel-card-cap-padding-x: 2vw;
+            }
+        }
+
+        /* Booking modal styles */
+        .booking-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 30;
+        }
+        .booking-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 31;
+            align-items: center;
+            justify-content: center;
+        }
+        .booking-modal-inner {
+            background: #041e42;
+            border-radius: 1rem;
+            padding: 3rem 3.5rem;
+            text-align: center;
+            min-width: 28rem;
+            max-width: 90vw;
+            color: #fff;
+        }
+        .booking-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .booking-subtitle {
+            font-size: 1.3rem;
+            color: #adb5bd;
+            margin-bottom: 2.5rem;
+        }
+        .duration-stepper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        .duration-stepper .step-btn {
+            width: 4.5rem;
+            height: 4.5rem;
+            font-size: 2.5rem;
+            line-height: 1;
+            background: #1a3a5c;
+            color: #fff;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .duration-stepper .step-btn:active { background: #2a4a6c; }
+        .duration-display {
+            font-size: 3rem;
+            font-weight: 700;
+            min-width: 10rem;
+            margin-left: 1.5rem;
+            margin-right: 1.5rem;
+        }
+        .until-next-btn {
+            display: block;
+            width: 100%;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            font-size: 1.3rem;
+            font-family: inherit;
+            background: #1a3a5c;
+            color: #adb5bd;
+            border: 2px solid #495057;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+        .until-next-btn.selected,
+        .until-next-btn:active { border-color: #d50032; color: #fff; }
+        .booking-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+        .booking-actions .cancel-btn {
+            padding: 1rem 2.5rem;
+            font-size: 1.4rem;
+            font-family: inherit;
+            background: #1a3a5c;
+            color: #adb5bd;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            margin-right: 1rem;
+        }
+        .booking-actions .confirm-btn {
+            padding: 1rem 3rem;
+            font-size: 1.4rem;
+            font-family: inherit;
+            background: #1e7e34;
+            color: #fff;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .booking-actions .confirm-btn:disabled { background: #495057; cursor: default; }
+        .booking-error {
+            margin-top: 1rem;
+            color: #d50032;
+            font-size: 1.1rem;
+        }
+        .book-now-card {
+            cursor: pointer;
+            border-color: #1e7e34;
+            border-width: 2px;
+        }
+        .book-now-card .card-body {
+            text-align: center;
+            color: #1e7e34;
+            font-weight: 700;
+        }
+    </style>
+    {% if compact %}
+    <style>
+        /* Legacy layout fix — fixed positioning, auto heights */
+        .card-display {
+            display: block !important;
+        }
+        .card-display > .card-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            height: auto;
+            min-height: 7rem;
+        }
+        .card-display > .card-body {
+            position: fixed;
+            top: 7rem; /* initial guess, adjusted by JS below */
+            left: 0;
+            right: 0;
+            bottom: 4rem;
+            overflow-y: auto;
+        }
+        .card-display > .card-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+        }
+    </style>
+    {% endif %}
+</head>
+<body>
+
+<div class="card card-display"
+     {% if compact %}data-bs-page-reload-seconds="0"{% else %}data-bs-page-reload-seconds="300"{% endif %}
+     data-bs-browser-time="true"
+     data-bs-page-hold-seconds="15"
+     {% if compact %}data-bs-animate="false"{% endif %}>
+
+    <!-- Header: logo | room name | clock -->
+    <header class="card-header">
+        <img class="masthead-logo" src="{% static 'room_schedules/edgel/media/uoe-logo.png' %}" alt="University of Edinburgh">
+        <h1 class="display-heading">{{ room.name }}</h1>
+        <div class="display-clock"></div>
+    </header>
+
+    <!-- Body: booking list, paginated by Display plugin -->
+    <main class="card-body" data-provide="uoe-display">
+        <div class="row row-cols-1 g-3">
+            {% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
+            <div class="col">
+                <div class="card book-now-card" onclick="openBookingModal()">
+                    <div class="card-body display-booking display-booking-large">
+                        <span class="bi-plus-circle" aria-hidden="true"></span> Book Now
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% for event in events %}
+            <div class="col">
+                <div class="card">
+                    <div class="card-body display-booking{% if event == current_event %} display-booking-large{% else %} display-muted{% endif %}">
+                        {{ event.name }}
+                        <div class="display-right-stack">
+                            <div>{{ event.start_time|date:"D j M" }} <span class="bi-calendar4-event" aria-hidden="true"></span></div>
+                            <div>{{ event.start_time|time:"H:i" }} - {{ event.end_time|time:"H:i" }} <span class="bi-clock" aria-hidden="true"></span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col">
+                <div class="card">
+                    <div class="card-body display-booking display-muted">No bookings today</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="card-footer">
+        <div class="small text-end" data-provide="uoe-refreshed">Last refreshed:</div>
+    </footer>
+
+</div>
+
+{% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
+<!-- Booking overlay & modal -->
+<div class="booking-overlay" id="bookingOverlay" onclick="closeBookingModal()"></div>
+<div class="booking-modal" id="bookingModal">
+    <div class="booking-modal-inner">
+        <div class="booking-title">Book this room</div>
+        <div class="booking-subtitle">How long do you need it?</div>
+        <div class="duration-stepper">
+            <button class="step-btn" onclick="changeDuration(-5)">&ndash;</button>
+            <div class="duration-display" id="durationDisplay">15 min</div>
+            <button class="step-btn" onclick="changeDuration(5)">+</button>
+        </div>
+        {% if next_event %}
+        <button class="until-next-btn" id="untilNextBtn" onclick="selectUntilNext()">
+            Until next booking ({{ next_event.start_time|time:"H:i" }})
+        </button>
+        {% endif %}
+        <div class="booking-actions">
+            <button class="cancel-btn" onclick="closeBookingModal()">Cancel</button>
+            <button class="confirm-btn" id="confirmBtn" onclick="confirmBooking()">Confirm Booking</button>
+        </div>
+        <div class="booking-error" id="bookingError" style="display:none;"></div>
+    </div>
+</div>
+{% endif %}
+
+{% if not compact %}
+<script src="{% static 'room_schedules/edgel/js/edgel.bundle.min.js' %}"></script>
+<script>
+    // Disable the cookie banner
+    EdGEL.Consent.Default.disabled = true
+</script>
+{% endif %}
+<script>
+    // ── Poll for booking changes ──
+    var STATE_HASH_URL = "{% url 'room_schedule/room_state_hash' venue_id=room.building_id room_id=room.pk %}";
+    var lastStateHash = null;
+    var hashPollFailures = 0;
+
+    function pollStateHash() {
+        fetch(STATE_HASH_URL)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                hashPollFailures = 0;
+                if (lastStateHash === null) {
+                    lastStateHash = data.hash;
+                } else if (data.hash !== lastStateHash) {
+                    location.reload();
+                }
+            })
+            .catch(function() {
+                hashPollFailures++;
+                if (hashPollFailures >= 5) location.reload();
+            });
+    }
+
+    pollStateHash();
+    setInterval(pollStateHash, 10000);
+
+    {% if compact %}
+    // ── Hard refresh every 5 minutes (compact mode — plugin AJAX reload disabled) ──
+    setTimeout(function() { location.reload(); }, 300000);
+    {% endif %}
+
+    // ── Reload at event boundaries so current/next status updates promptly ──
+    {% if current_event %}
+    // Current event ends — reload to show next state
+    (function() {
+        var ms = new Date("{{ current_event_end_iso }}").getTime() - Date.now();
+        if (ms > 0 && ms < 86400000) setTimeout(function() { location.reload(); }, ms + 2000);
+    })();
+    {% endif %}
+    {% if next_event %}
+    // Next event starts — reload to promote it to current
+    (function() {
+        var ms = new Date("{{ next_event_start_iso }}").getTime() - Date.now();
+        if (ms > 0 && ms < 86400000) setTimeout(function() { location.reload(); }, ms + 2000);
+    })();
+    {% endif %}
+</script>
+
+{% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
+<script>
+    // ── Adhoc Booking ──
+    var BOOK_URL = "{% url 'room_schedule/book_adhoc' venue_id=room.building_id room_id=room.pk %}";
+    var NEXT_EVT_START = "{{ next_event_start_iso|default:'None' }}";
+    var currentDurationMinutes = 15;
+    var useUntilNext = false;
+
+    function serverTime() {
+        return Date.now();
+    }
+
+    function maxDuration() {
+        if (NEXT_EVT_START && NEXT_EVT_START !== 'None') {
+            var minsUntilNext = Math.floor((new Date(NEXT_EVT_START).getTime() - serverTime()) / 60000);
+            return Math.min(240, Math.floor(minsUntilNext / 5) * 5) || 5;
+        }
+        return 240;
+    }
+
+    function updateDurationDisplay() {
+        var el = document.getElementById('durationDisplay');
+        if (!el) return;
+        if (currentDurationMinutes < 60) {
+            el.textContent = currentDurationMinutes + ' min';
+        } else {
+            var h = Math.floor(currentDurationMinutes / 60);
+            var m = currentDurationMinutes % 60;
+            el.textContent = h + 'h' + (m ? ' ' + m + 'm' : '');
+        }
+    }
+
+    function openBookingModal() {
+        currentDurationMinutes = Math.min(15, maxDuration());
+        useUntilNext = false;
+        updateDurationDisplay();
+        var untilBtn = document.getElementById('untilNextBtn');
+        if (untilBtn) untilBtn.classList.remove('selected');
+        document.getElementById('bookingOverlay').style.display = 'block';
+        document.getElementById('bookingModal').style.display = 'flex';
+        document.getElementById('bookingError').style.display = 'none';
+        document.getElementById('confirmBtn').disabled = false;
+        document.getElementById('confirmBtn').textContent = 'Confirm Booking';
+    }
+
+    function closeBookingModal() {
+        document.getElementById('bookingModal').style.display = 'none';
+        document.getElementById('bookingOverlay').style.display = 'none';
+    }
+
+    function changeDuration(delta) {
+        useUntilNext = false;
+        var untilBtn = document.getElementById('untilNextBtn');
+        if (untilBtn) untilBtn.classList.remove('selected');
+        currentDurationMinutes = Math.min(maxDuration(), Math.max(5, currentDurationMinutes + delta));
+        updateDurationDisplay();
+    }
+
+    function selectUntilNext() {
+        useUntilNext = true;
+        var untilBtn = document.getElementById('untilNextBtn');
+        if (untilBtn) untilBtn.classList.add('selected');
+        document.getElementById('durationDisplay').textContent = 'Until next';
+    }
+
+    function getCookie(name) {
+        var value = '; ' + document.cookie;
+        var parts = value.split('; ' + name + '=');
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    function confirmBooking() {
+        var btn = document.getElementById('confirmBtn');
+        btn.disabled = true;
+        btn.textContent = 'Booking\u2026';
+
+        var duration = useUntilNext ? 0 : currentDurationMinutes;
+        var formData = new FormData();
+        formData.append('duration_minutes', duration);
+
+        fetch(BOOK_URL, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                location.reload();
+            } else {
+                document.getElementById('bookingError').textContent = data.error || 'Booking failed.';
+                document.getElementById('bookingError').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Confirm Booking';
+            }
+        })
+        .catch(function() {
+            document.getElementById('bookingError').textContent = 'Network error. Please try again.';
+            document.getElementById('bookingError').style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Confirm Booking';
+        });
+    }
+</script>
+{% endif %}
+
+{% if compact %}
+<script>
+    /* Measure actual header/footer height and adjust body position.
+       Runs after DOMContentLoaded (when the Display plugin has populated the clock)
+       and again after a short delay as a safety net.
+       Safe because the plugin AJAX reload is disabled — every reload is a full page load. */
+    (function() {
+        function adjustLayout() {
+            var header = document.querySelector('.card-display > .card-header');
+            var body = document.querySelector('.card-display > .card-body');
+            var footer = document.querySelector('.card-display > .card-footer');
+            if (header && body) {
+                body.style.top = header.offsetHeight + 'px';
+            }
+            if (footer && body) {
+                body.style.bottom = footer.offsetHeight + 'px';
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            adjustLayout();
+            setTimeout(adjustLayout, 200);
+            setTimeout(adjustLayout, 1000);
+        });
+    })();
+</script>
+{% endif %}
+
+</body>
+</html>

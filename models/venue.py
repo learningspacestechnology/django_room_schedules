@@ -1,55 +1,29 @@
 from django.db import models
 from django.urls import reverse
 
-from room_schedules.artifax_requests import get_todays_events_simple
 
+class Building(models.Model):
+    DISPLAY_GRID = 'grid'
+    DISPLAY_FOYER = 'foyer'
+    DISPLAY_CHOICES = [
+        (DISPLAY_GRID, 'Grid'),
+        (DISPLAY_FOYER, 'Foyer'),
+    ]
 
-class Venue(models.Model):
     name = models.CharField(max_length=100)
-    artifax_id = models.IntegerField(unique=True, null=True, blank=False)
+    ip_address = models.GenericIPAddressField(null=True, blank=True, unique=True, verbose_name="IP address")
+    default_display = models.CharField(max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_GRID)
 
     def __str__(self):
         return "{}: {}".format(self.pk, self.name)
 
     def get_absolute_url(self):
-        return reverse('event_schedule/venue', args=[str(self.id)])
+        return reverse('room_schedule/building', args=[str(self.id)])
 
     def update_events(self):
         from room_schedules.models import Room, Event
         from room_schedules import o365_requests
 
-        # --- Artifax source ---
-        if self.artifax_id:
-            events = get_todays_events_simple(self.artifax_id)
-            artifax_ids = []
-            new_events = 0
-            for e in events:
-                room, _ = Room.objects.update_or_create(
-                    artifax_id=e['room_id'],
-                    defaults={'name': e['room_name'], 'venue': self},
-                )
-                ev, created = Event.objects.update_or_create(
-                    artifax_id=e['event_id'],
-                    defaults={
-                        'name': e['activity_detail'][:200],
-                        'organiser': e['organiser'][:200],
-                        'room': room,
-                        'start_time': e['time'],
-                        'end_time': e['finish_time'],
-                        'cancelled': e['cancelled'],
-                    },
-                )
-                artifax_ids.append(ev.id)
-                if created:
-                    new_events += 1
-            Event.objects.filter(room__venue=self, artifax_id__isnull=False).exclude(
-                pk__in=artifax_ids
-            ).delete()
-            print("{} (Artifax) created {} events and updated {}".format(
-                self.name, new_events, len(artifax_ids) - new_events
-            ))
-
-        # --- O365 source (per room) ---
         for room in self.room_set.filter(o365_calendar_email__isnull=False):
             events = o365_requests.get_todays_events(room.o365_calendar_email)
             o365_ids = []

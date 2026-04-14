@@ -1,15 +1,40 @@
 import datetime
 import hashlib
 
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render, get_object_or_404
+from django.conf import settings
+from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 
+
+def get_client_ip(request):
+    xff = request.META.get('HTTP_X_FORWARDED_FOR')
+    if xff:
+        if getattr(settings, 'USE_LAST_FORWARDED_FOR_IP', False):
+            return xff.split(",")[-1].strip()
+        if getattr(settings, 'USE_FIRST_FORWARDED_FOR_IP', False):
+            return xff.split(",")[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+def auto_route(request):
+    ip = get_client_ip(request)
+    if ip:
+        room = Room.objects.filter(ip_address=ip).first()
+        if room:
+            return redirect('room_schedule/room', venue_id=room.building_id, room_id=room.pk)
+        building = Building.objects.filter(ip_address=ip).first()
+        if building:
+            if building.default_display == Building.DISPLAY_FOYER:
+                return redirect('room_schedule/building_foyer', venue_id=building.pk)
+            return redirect('room_schedule/building', venue_id=building.pk)
+    return HttpResponseNotFound("No room or building mapped to this IP ({}).".format(ip))
+
 # Create your views here.
 from room_schedules.settings import HOUR_BREAK_POINT
-from room_schedules.models import Venue, Event, Room
+from room_schedules.models import Building, Event, Room
 
 
 def room_led_status(request, venue_id, room_id):
@@ -53,11 +78,104 @@ def room_led_status(request, venue_id, room_id):
     return response
 
 
-def show_venue(request, venue_id):
-    venue = get_object_or_404(Venue, pk=venue_id)
-    events = Event.objects.filter(room__venue=venue, end_time__gte=datetime.datetime.now(), cancelled=False)
-    current_date = (datetime.datetime.now() - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
-    return render(request, "room_schedules/dashboard.html", {'events': events, 'current_date': current_date})
+def _get_building_display_context(building):
+    """Build the shared template context for building-level display views."""
+    now = datetime.datetime.now()
+    current_date = (now - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
+
+    rooms = list(building.room_set.all().order_by('name'))
+    events = list(
+        Event.objects.filter(
+            room__building=building,
+            end_time__gte=now,
+            cancelled=False,
+        ).select_related('room').order_by('start_time')
+    )
+
+    # Build per-room status info
+    room_statuses = []
+    for room in rooms:
+        room_events = [e for e in events if e.room_id == room.pk]
+        current_event = None
+        next_event = None
+        for e in room_events:
+            if e.start_time <= now <= e.end_time:
+                current_event = e
+            elif e.start_time > now and next_event is None:
+                next_event = e
+
+        is_available = current_event is None
+        is_warning = False
+        if is_available and next_event:
+            is_warning = (next_event.start_time - now).total_seconds() / 60 <= 15
+
+        room_statuses.append({
+            'room': room,
+            'events': room_events,
+            'current_event': current_event,
+            'next_event': next_event,
+            'is_available': is_available,
+            'is_warning': is_warning,
+        })
+
+    return {
+        'building': building,
+        'rooms': rooms,
+        'room_statuses': room_statuses,
+        'events': events,
+        'current_date': current_date,
+        'now': now,
+    }
+
+
+def show_building_grid(request, venue_id):
+    building = get_object_or_404(Building, pk=venue_id)
+    context = _get_building_display_context(building)
+
+    # Compute grid minute offsets for the schedule grid template
+    start_hour = 8
+    end_hour = 22
+    max_minutes = (end_hour - start_hour) * 60
+
+    for rs in context['room_statuses']:
+        for event in rs['events']:
+            st = event.start_time
+            et = event.end_time
+            event.grid_start_minutes = max(0, (st.hour - start_hour) * 60 + st.minute)
+            event.grid_end_minutes = min(max_minutes, (et.hour - start_hour) * 60 + et.minute)
+
+    context['start_hour'] = start_hour
+    context['end_hour'] = end_hour
+    context['hours'] = list(range(start_hour, end_hour))
+    return render(request, "room_schedules/building_grid.html", context)
+
+
+def show_building_foyer(request, venue_id):
+    building = get_object_or_404(Building, pk=venue_id)
+    context = _get_building_display_context(building)
+    return render(request, "room_schedules/building_foyer.html", context)
+
+
+def building_state_hash(request, venue_id):
+    """Return a short hash of a building's current event state."""
+    building = get_object_or_404(Building, pk=venue_id)
+    now = datetime.datetime.now()
+
+    events = Event.objects.filter(
+        room__building=building,
+        end_time__gte=now,
+        cancelled=False,
+    ).order_by('start_time').values_list('pk', 'name', 'start_time', 'end_time', 'cancelled')
+
+    raw = '|'.join(
+        f'{pk},{name},{st.isoformat()},{et.isoformat()},{c}'
+        for pk, name, st, et, c in events
+    )
+    digest = hashlib.md5(raw.encode()).hexdigest()[:12]
+
+    response = JsonResponse({'hash': digest})
+    response['Cache-Control'] = 'no-store'
+    return response
 
 
 def _get_room_display_context(room):
@@ -145,16 +263,27 @@ def _get_room_display_context(room):
     }
 
 
+def _is_legacy_browser(user_agent):
+    """Detect older/legacy browsers that need the compact CSS fix."""
+    if not user_agent:
+        return False
+    # Match the Safari 11 / WebKit 605 UA used by older display devices
+    return 'Version/11.0 Safari' in user_agent or 'AppleWebKit/605.1.15' in user_agent
+
+
 def show_room(request, venue_id, room_id):
     room = get_object_or_404(Room, pk=room_id)
     context = _get_room_display_context(room)
-    return render(request, "room_schedules/room_screen.html", context)
+    compact = request.GET.get('compact')
+    if compact is not None:
+        context['compact'] = compact == '1'
+    else:
+        context['compact'] = _is_legacy_browser(request.META.get('HTTP_USER_AGENT', ''))
+    return render(request, "room_schedules/room_screen_uoe.html", context)
 
 
-def show_room_tablet(request, venue_id, room_id):
-    room = get_object_or_404(Room, pk=room_id)
-    context = _get_room_display_context(room)
-    return render(request, "room_schedules/room_tablet.html", context)
+def css_diagnostic(request, venue_id, room_id):
+    return render(request, "room_schedules/css_diagnostic.html")
 
 
 @csrf_exempt
@@ -169,7 +298,7 @@ def book_adhoc(request, venue_id, room_id):
 
     room = get_object_or_404(Room, pk=room_id)
 
-    if not room.allow_tablet_booking or not room.o365_calendar_email:
+    if not room.allow_booking or not room.o365_calendar_email:
         return JsonResponse({'error': 'Room does not support adhoc booking.'}, status=400)
 
     now = datetime.datetime.now()
