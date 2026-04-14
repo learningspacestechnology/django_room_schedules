@@ -6,7 +6,7 @@ from room_schedules.artifax_requests import get_todays_events_simple
 
 class Venue(models.Model):
     name = models.CharField(max_length=100)
-    artifax_id = models.IntegerField(unique=True, null=True, blank=True)
+    artifax_id = models.IntegerField(unique=True, null=True, blank=False)
 
     def __str__(self):
         return "{}: {}".format(self.pk, self.name)
@@ -50,7 +50,7 @@ class Venue(models.Model):
             ))
 
         # --- O365 source (per room) ---
-        for room in self.room_set.filter(o365_calendar_email__isnull=False).exclude(o365_calendar_email=''):
+        for room in self.room_set.filter(o365_calendar_email__isnull=False):
             events = o365_requests.get_todays_events(room.o365_calendar_email)
             o365_ids = []
             new_events = 0

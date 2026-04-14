@@ -13,26 +13,26 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="event",
             name="o365_event_id",
-            field=models.CharField(blank=True, max_length=500, null=True, unique=True),
+            field=models.CharField(blank=False, max_length=500, null=True, unique=True),
         ),
         migrations.AddField(
             model_name="room",
             name="o365_calendar_email",
-            field=models.EmailField(blank=True, max_length=254, null=True, unique=True),
+            field=models.EmailField(blank=False, max_length=254, null=True, unique=True),
         ),
         migrations.AlterField(
             model_name="event",
             name="artifax_id",
-            field=models.IntegerField(blank=True, null=True, unique=True),
+            field=models.IntegerField(blank=False, null=True, unique=True),
         ),
         migrations.AlterField(
             model_name="room",
             name="artifax_id",
-            field=models.IntegerField(blank=True, null=True, unique=True),
+            field=models.IntegerField(blank=False, null=True, unique=True),
         ),
         migrations.AlterField(
             model_name="venue",
             name="artifax_id",
-            field=models.IntegerField(blank=True, null=True, unique=True),
+            field=models.IntegerField(blank=False, null=True, unique=True),
         ),
     ]

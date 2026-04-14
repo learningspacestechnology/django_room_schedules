@@ -3,6 +3,8 @@ import httplib2
 import msal
 from datetime import datetime, timedelta
 
+from django.conf import settings
+
 from room_schedules.settings import (
     HOUR_BREAK_POINT,
     O365_CLIENT_ID, O365_CLIENT_SECRET, O365_TENANT_ID,
@@ -111,8 +113,8 @@ def create_adhoc_booking(room_email, start_dt, end_dt):
     url = f"{GRAPH_API}/users/{room_email}/calendar/events"
     body = json.dumps({
         "subject": "Adhoc Booking",
-        "start": {"dateTime": start_dt.isoformat(), "timeZone": "Europe/London"},
-        "end":   {"dateTime": end_dt.isoformat(),   "timeZone": "Europe/London"},
+        "start": {"dateTime": start_dt.isoformat(), "timeZone": settings.TIME_ZONE},
+        "end":   {"dateTime": end_dt.isoformat(),   "timeZone": settings.TIME_ZONE},
     })
     response, content = h.request(
         url,

@@ -7,8 +7,8 @@ from room_schedules.models import Venue
 class Room(models.Model):
     name = models.CharField(max_length=100)
     venue = models.ForeignKey(Venue, on_delete=models.CASCADE)
-    artifax_id = models.IntegerField(unique=True, null=True, blank=True)
-    o365_calendar_email = models.EmailField(unique=True, null=True, blank=True)
+    artifax_id = models.IntegerField(unique=True, null=True, blank=False)
+    o365_calendar_email = models.EmailField(unique=True, null=True, blank=False)
     allow_tablet_booking = models.BooleanField(
         default=False,
         help_text="Allow adhoc bookings to be made from the tablet display screen.",

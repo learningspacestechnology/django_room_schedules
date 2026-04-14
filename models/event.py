@@ -9,8 +9,8 @@ class Event(models.Model):
     organiser = models.CharField(max_length=200)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    artifax_id = models.IntegerField(unique=True, null=True, blank=True)
-    o365_event_id = models.CharField(max_length=500, unique=True, null=True, blank=True)
+    artifax_id = models.IntegerField(unique=True, null=True, blank=False)
+    o365_event_id = models.CharField(max_length=500, unique=True, null=True, blank=False)
     cancelled = models.BooleanField(default=False)
 
     def __str__(self):

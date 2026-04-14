@@ -5,6 +5,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
+from django.utils import timezone
 
 # Create your views here.
 from room_schedules.settings import HOUR_BREAK_POINT
@@ -18,7 +19,7 @@ def room_led_status(request, venue_id, room_id):
     - BUSY: room is currently in use
     """
     room = get_object_or_404(Room, pk=room_id)
-    now = datetime.datetime.now()
+    now = timezone.now()
     
     # Check if room is currently in use
     current_event = Event.objects.filter(
@@ -61,7 +62,7 @@ def show_venue(request, venue_id):
 
 def _get_room_display_context(room):
     """Build the shared template context for room display views."""
-    now = datetime.datetime.now()
+    now = timezone.now()
     current_date = (now - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
 
     # Get today's remaining events (not yet ended, not cancelled)
@@ -150,7 +151,6 @@ def show_room(request, venue_id, room_id):
     return render(request, "room_schedules/room_screen.html", context)
 
 
-@ensure_csrf_cookie
 def show_room_tablet(request, venue_id, room_id):
     room = get_object_or_404(Room, pk=room_id)
     context = _get_room_display_context(room)
