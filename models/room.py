@@ -12,7 +12,6 @@ class Room(models.Model):
         default=False,
         help_text="Allow adhoc bookings to be made from the display screen.",
     )
-    ip_address = models.GenericIPAddressField(null=True, blank=True, unique=True, verbose_name="IP address")
 
     def __str__(self):
         return "{}: {}".format(self.pk, self.name)

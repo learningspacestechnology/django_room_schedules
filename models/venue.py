@@ -11,7 +11,6 @@ class Building(models.Model):
     ]
 
     name = models.CharField(max_length=100)
-    ip_address = models.GenericIPAddressField(null=True, blank=True, unique=True, verbose_name="IP address")
     default_display = models.CharField(max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_GRID)
 
     def __str__(self):

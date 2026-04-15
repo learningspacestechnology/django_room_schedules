@@ -22,11 +22,13 @@ def get_client_ip(request):
 def auto_route(request):
     ip = get_client_ip(request)
     if ip:
-        room = Room.objects.filter(ip_address=ip).first()
-        if room:
+        from room_schedules.models import IpAddress
+        ip_obj = IpAddress.objects.select_related('room', 'building').filter(ip_address=ip).first()
+        if ip_obj and ip_obj.room:
+            room = ip_obj.room
             return redirect('room_schedule/room', venue_id=room.building_id, room_id=room.pk)
-        building = Building.objects.filter(ip_address=ip).first()
-        if building:
+        if ip_obj and ip_obj.building:
+            building = ip_obj.building
             if building.default_display == Building.DISPLAY_FOYER:
                 return redirect('room_schedule/building_foyer', venue_id=building.pk)
             return redirect('room_schedule/building', venue_id=building.pk)

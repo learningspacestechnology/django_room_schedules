@@ -2,21 +2,40 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
-from room_schedules.models import Building, Room
+from room_schedules.models import Building, Room, IpAddress
+
+
+class IpAddressInline(TabularInline):
+    model = IpAddress
+    extra = 1
+
+
+class RoomIpAddressInline(IpAddressInline):
+    verbose_name = "IP address"
+    verbose_name_plural = "IP addresses"
+    fk_name = 'room'
+    fields = ('ip_address',)
+
+
+class BuildingIpAddressInline(IpAddressInline):
+    verbose_name = "IP address"
+    verbose_name_plural = "IP addresses"
+    fk_name = 'building'
+    fields = ('ip_address',)
 
 
 class RoomInline(TabularInline):
     model = Room
     extra = 0
-    fields = ('name', 'o365_calendar_email', 'allow_booking', 'ip_address')
+    fields = ('name', 'o365_calendar_email', 'allow_booking')
 
 
 @admin.register(Building)
 class BuildingAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'ip_address', 'default_display', 'grid_link', 'foyer_link')
+    list_display = ('id', 'name', 'default_display', 'grid_link', 'foyer_link')
     list_display_links = ('id', 'name')
     search_fields = ('name',)
-    inlines = [RoomInline]
+    inlines = [BuildingIpAddressInline, RoomInline]
 
     def grid_link(self, obj):
         return format_html(
@@ -35,11 +54,12 @@ class BuildingAdmin(ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'building', 'o365_calendar_email', 'allow_booking', 'ip_address', 'screen_link')
+    list_display = ('id', 'name', 'building', 'o365_calendar_email', 'allow_booking', 'screen_link')
     list_display_links = ('id', 'name')
     search_fields = ('name', 'building__name')
     list_filter = ('building',)
     list_select_related = ('building',)
+    inlines = [RoomIpAddressInline]
 
     def screen_link(self, obj):
         return format_html(
