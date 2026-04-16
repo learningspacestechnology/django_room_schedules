@@ -31,7 +31,7 @@
                     {% for event in rs.events %}
                         <div class="col">
                             <div class="card">
-                                <div class="card-body display-booking">
+                                <div class="card-body display-booking{% if event == rs.current_event %} display-booking-large{% else %} display-muted{% endif %}">
                                     {{ event.name }}
                                     <div class="display-right-stack">
                                         <div>
