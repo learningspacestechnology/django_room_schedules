@@ -1,5 +1,7 @@
+import asyncio
 import json
 import httplib2
+import httpx
 import msal
 from datetime import datetime, timedelta, timezone
 
@@ -9,7 +11,6 @@ from room_schedules.settings import (
     HOUR_BREAK_POINT,
     O365_CLIENT_ID, O365_CLIENT_SECRET, O365_TENANT_ID,
     O365_DELEGATED_USERNAME, O365_DELEGATED_PASSWORD,
-    O365_ROOMLIST_EMAIL,
 )
 
 GRAPH_API = "https://graph.microsoft.com/v1.0"
@@ -49,12 +50,14 @@ def _get_access_token():
     return result["access_token"]
 
 
-def get_todays_events(room_email):
+async def get_todays_events(room_email, limit=100):
     """
     Fetch today's events for an O365 room resource mailbox via the Microsoft Graph API.
 
     Uses the same fringe-day boundary as the Artifax integration:
     the day runs from HOUR_BREAK_POINT (04:00) to 03:59 the next morning.
+
+    Pass `limit=1` to perform a cheap access-check probe.
 
     Returns a list of dicts:
         {id, name, organiser, start_time, end_time, cancelled}
@@ -69,29 +72,29 @@ def get_todays_events(room_email):
         start = now.replace(hour=HOUR_BREAK_POINT, minute=0, second=0, microsecond=0)
     end = start + timedelta(hours=24) - timedelta(seconds=1)
 
-    token = _get_access_token()
-    h = httplib2.Http()
+    token = await asyncio.to_thread(_get_access_token)
     url = (
         f"{GRAPH_API}/users/{room_email}/calendarView"
         f"?startDateTime={start.isoformat()}&endDateTime={end.isoformat()}"
         f"&$select=id,subject,organizer,start,end,isCancelled"
-        f"&$top=100"
+        f"&$top={limit}"
     )
-    response, content = h.request(
-        url,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-    )
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
 
-    if response.status != 200:
+    if resp.status_code != 200:
         raise RuntimeError(
-            f"Graph API error {response.status} for {room_email}: {content}"
+            f"Graph API error {resp.status_code} for {room_email}: {resp.text}"
         )
 
     results = []
-    for item in json.loads(content).get("value", []):
+    for item in resp.json().get("value", []):
         results.append({
             "id": item["id"],
             "name": item.get("subject", ""),

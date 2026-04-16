@@ -1,3 +1,5 @@
+import asyncio
+
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
@@ -7,7 +9,18 @@ from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import action
 
 from room_schedules.models import Building, Room, IpAddress, RoomGroup
-from room_schedules.o365_requests import list_tenant_rooms
+from room_schedules.o365_requests import get_todays_events, list_tenant_rooms
+
+
+async def _filter_accessible_rooms(rooms):
+    async def check(room):
+        try:
+            await get_todays_events(room['email'], limit=1)
+            return True
+        except RuntimeError:
+            return False
+    results = await asyncio.gather(*(check(r) for r in rooms))
+    return [r for r, ok in zip(rooms, results) if ok]
 
 
 class IpAddressInline(TabularInline):
@@ -94,6 +107,8 @@ class BuildingAdmin(ModelAdmin):
             else:
                 messages.info(request, "No rooms imported.")
             return redirect(change_url)
+
+        available = asyncio.run(_filter_accessible_rooms(available))
 
         context = {
             **self.admin_site.each_context(request),
