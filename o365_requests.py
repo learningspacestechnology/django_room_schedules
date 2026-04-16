@@ -9,6 +9,7 @@ from room_schedules.settings import (
     HOUR_BREAK_POINT,
     O365_CLIENT_ID, O365_CLIENT_SECRET, O365_TENANT_ID,
     O365_DELEGATED_USERNAME, O365_DELEGATED_PASSWORD,
+    O365_ROOMLIST_EMAIL,
 )
 
 GRAPH_API = "https://graph.microsoft.com/v1.0"
@@ -100,6 +101,78 @@ def get_todays_events(room_email):
             "cancelled": item.get("isCancelled", False),
         })
     return results
+
+
+def _graph_get_paginated_manual(url, token, page_size):
+    """Yield items from a paginated Graph endpoint, following @odata.nextLink."""
+    h = httplib2.Http()
+    count=0
+    while True:
+        response, content = h.request(
+            url+f"&$top={page_size}&$skip={count}",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
+        if response.status != 200:
+            raise RuntimeError(
+                f"Graph API error {response.status} for {url}: {content}"
+            )
+        payload = json.loads(content)
+        value = payload.get("value", [])
+        count += len(value)
+        for item in value:
+            yield item
+        if len(value) < page_size:
+            break
+
+
+def _room_item_to_dict(item):
+    email = item.get("emailAddress")
+    if not email:
+        return None
+    return {
+        "email": email,
+        "name": item.get("displayName", ""),
+        "building": item.get("building", ""),
+        "floor": item.get("floorNumber"),
+        "capacity": item.get("capacity"),
+    }
+
+
+def list_tenant_rooms():
+    """Return all room mailboxes in the tenant via Graph /places.
+
+    Requires Place.Read.All on the app registration.
+    Follows @odata.nextLink so tenants with >100 rooms aren't truncated.
+
+    Unions results from /places/microsoft.graph.room with the per-roomlist
+    rooms endpoint, because Graph's /places/microsoft.graph.room silently
+    omits rooms whose Exchange Places metadata isn't fully indexed.
+    Deduplicates by email.
+
+    When O365_ROOMLIST_EMAIL is set, additionally queries that specific
+    RoomList's /rooms and /workspaces sub-collections. Workspaces are a
+    separate place type from rooms in Graph and are otherwise invisible
+    to /places/microsoft.graph.room.
+
+    Returns a list of dicts: {email, name, building, floor, capacity}.
+    """
+    token = _get_access_token()
+    select = "$select=displayName,emailAddress,building,floorNumber,capacity"
+
+    rooms_by_email = {} 
+
+    for item in _graph_get_paginated_manual(
+        f"{GRAPH_API}/places/microsoft.graph.room?{select}", token, 100
+    ):
+        room = _room_item_to_dict(item)
+        if room:
+            rooms_by_email.setdefault(room["email"], room)
+
+    print(len(rooms_by_email), "rooms found in tenant via Graph API")
+    return list(rooms_by_email.values())
 
 
 def create_adhoc_booking(room_email, start_dt, end_dt):

@@ -1,0 +1,65 @@
+{% extends "admin/base_site.html" %}
+{% load i18n unfold %}
+
+{% block content %}
+    <div id="content-main" class="flex flex-col gap-6">
+        {% if available_rooms %}
+            <p class="text-font-default-light dark:text-font-default-dark">
+                Tick the room mailboxes you want to import into <strong>{{ building.name }}</strong>.
+                Imported rooms start with <em>allow booking</em> off &mdash; turn it on per room from the Room admin.
+            </p>
+
+            <form method="post" class="flex flex-col gap-6">
+                {% csrf_token %}
+                <div class="-mx-1 px-1 overflow-x-auto lg:rounded-default lg:border lg:border-base-200 lg:mx-0 lg:px-0 lg:shadow-xs lg:bg-white lg:dark:border-base-800 lg:dark:bg-base-900">
+                    <table class="block border-spacing-none border-separate w-full lg:table">
+                        <thead class="hidden lg:table-header-group">
+                            <tr>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark"></th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Name</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Email</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">O365 building</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Floor</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Capacity</th>
+                            </tr>
+                        </thead>
+                        {% for room in available_rooms %}
+                            <tbody class="block relative lg:table-row-group {% cycle '' 'bg-base-50 dark:bg-white/[.02]' %}">
+                                <tr class="block border border-base-200 mb-3 rounded-default lg:table-row lg:border-none lg:mb-0 lg:rounded-none dark:border-base-800">
+                                    <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t lg:w-px dark:border-base-800">
+                                        <input type="checkbox" name="emails" value="{{ room.email }}" id="room-{{ forloop.counter }}">
+                                    </td>
+                                    <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t dark:border-base-800">
+                                        <label for="room-{{ forloop.counter }}" class="cursor-pointer font-medium text-font-important-light dark:text-font-important-dark">{{ room.name|default:room.email }}</label>
+                                    </td>
+                                    <td class="border-b border-base-200 font-mono px-3 py-2 text-xs lg:border-b-0 lg:border-t dark:border-base-800">{{ room.email }}</td>
+                                    <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t dark:border-base-800">{{ room.building|default:"&mdash;" }}</td>
+                                    <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t dark:border-base-800">{{ room.floor|default:"&mdash;" }}</td>
+                                    <td class="px-3 py-2 lg:border-t lg:border-base-200 lg:dark:border-base-800">{{ room.capacity|default:"&mdash;" }}</td>
+                                </tr>
+                            </tbody>
+                        {% endfor %}
+                    </table>
+                </div>
+
+                <div class="flex gap-3">
+                    {% component "unfold/components/button.html" with submit=1 %}
+                        Import selected rooms
+                    {% endcomponent %}
+                    {% component "unfold/components/button.html" with href=change_url variant="default" %}
+                        Cancel
+                    {% endcomponent %}
+                </div>
+            </form>
+        {% else %}
+            <p class="text-font-default-light dark:text-font-default-dark">
+                Every room mailbox in the tenant is already imported. Nothing to do here.
+            </p>
+            <div>
+                {% component "unfold/components/button.html" with href=change_url variant="default" %}
+                    Back to {{ building.name }}
+                {% endcomponent %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,9 +1,13 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
+from unfold.decorators import action
 
 from room_schedules.models import Building, Room, IpAddress, RoomGroup
+from room_schedules.o365_requests import list_tenant_rooms
 
 
 class IpAddressInline(TabularInline):
@@ -51,6 +55,60 @@ class BuildingAdmin(ModelAdmin):
     list_display_links = ('id', 'name')
     search_fields = ('name',)
     inlines = [BuildingIpAddressInline, RoomInline, RoomGroupInline]
+    actions_detail = ['discover_rooms']
+
+    @action(description="Discover rooms from O365", url_path="discover-rooms")
+    def discover_rooms(self, request, object_id):
+        building = get_object_or_404(Building, pk=object_id)
+        change_url = reverse('admin:room_schedules_building_change', args=[building.pk])
+
+        try:
+            tenant_rooms = list_tenant_rooms()
+        except RuntimeError as exc:
+            messages.error(request, f"Could not list rooms from O365: {exc}")
+            return redirect(change_url)
+
+        existing_emails = set(
+            Room.objects.values_list('o365_calendar_email', flat=True)
+        )
+        available = [r for r in tenant_rooms if r['email'] not in existing_emails]
+        available.sort(key=lambda r: (r.get('building') or '', r['name']))
+
+        if request.method == 'POST':
+            selected = set(request.POST.getlist('emails'))
+            by_email = {r['email']: r for r in available}
+            created = 0
+            for email in selected:
+                room = by_email.get(email)
+                if not room:
+                    continue
+                Room.objects.create(
+                    building=building,
+                    name=room['name'] or email,
+                    o365_calendar_email=email,
+                    allow_booking=False,
+                )
+                created += 1
+            if created:
+                messages.success(request, f"Imported {created} room(s) into {building.name}.")
+            else:
+                messages.info(request, "No rooms imported.")
+            return redirect(change_url)
+
+        context = {
+            **self.admin_site.each_context(request),
+            'title': f'Discover rooms from O365 — {building.name}',
+            'subtitle': building.name,
+            'building': building,
+            'available_rooms': available,
+            'opts': Building._meta,
+            'change_url': change_url,
+        }
+        return render(
+            request,
+            'admin/room_schedules/building/discover_rooms.html',
+            context,
+        )
 
     def grid_link(self, obj):
         return format_html(
