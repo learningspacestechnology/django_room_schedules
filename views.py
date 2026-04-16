@@ -100,7 +100,7 @@ def room_led_status(request, venue_id, room_id):
 
 def _get_rooms_display_context(rooms_qs, title, state_hash_url):
     """Build template context for any multi-room display (building or group)."""
-    now = datetime.datetime.now()
+    now = timezone.now()
     current_date = (now - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
 
     rooms = list(rooms_qs.order_by('name'))
@@ -179,8 +179,8 @@ def _annotate_grid_offsets(room_statuses, start_hour, end_hour):
     max_minutes = (end_hour - start_hour) * 60
     for rs in room_statuses:
         for event in rs['events']:
-            st = event.start_time
-            et = event.end_time
+            st = timezone.localtime(event.start_time)
+            et = timezone.localtime(event.end_time)
             event.grid_start_minutes = max(0, (st.hour - start_hour) * 60 + st.minute)
             event.grid_end_minutes = min(max_minutes, (et.hour - start_hour) * 60 + et.minute)
 
@@ -218,7 +218,7 @@ def show_building_foyer(request, venue_id):
 def building_state_hash(request, venue_id):
     """Return a short hash of a building's current event state."""
     building = get_object_or_404(Building, pk=venue_id)
-    now = datetime.datetime.now()
+    now = timezone.now()
 
     events = Event.objects.filter(
         room__building=building,
@@ -254,7 +254,7 @@ def show_room_group_foyer(request, venue_id, group_id):
 def room_group_state_hash(request, venue_id, group_id):
     """Return a short hash of a room group's current event state."""
     group = get_object_or_404(RoomGroup, pk=group_id, building_id=venue_id)
-    now = datetime.datetime.now()
+    now = timezone.now()
 
     events = Event.objects.filter(
         room__in=group.rooms.all(),
@@ -325,9 +325,11 @@ def _get_room_display_context(room):
             free_since = previous_event.end_time
         else:
             # No earlier event today — free since the start of the display day
-            free_since = datetime.datetime.combine(
-                current_date,
-                datetime.time(HOUR_BREAK_POINT, 0),
+            free_since = timezone.make_aware(
+                datetime.datetime.combine(
+                    current_date,
+                    datetime.time(HOUR_BREAK_POINT, 0),
+                )
             )
 
     # Timestamps for JS countdowns (as ISO strings for easy parsing)
@@ -447,7 +449,7 @@ def room_state_hash(request, venue_id, room_id):
     avoiding unnecessary full-page refreshes.
     """
     room = get_object_or_404(Room, pk=room_id)
-    now = datetime.datetime.now()
+    now = timezone.now()
 
     events = Event.objects.filter(
         room=room,
