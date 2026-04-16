@@ -15,13 +15,21 @@ Including another URLconf
 """
 from django.urls import path
 
-from .views import show_building_grid, show_building_foyer, building_state_hash, show_room, room_led_status, book_adhoc, room_state_hash, css_diagnostic, auto_route
+from .views import (
+    show_building_grid, show_building_foyer, building_state_hash,
+    show_room, room_led_status, book_adhoc, room_state_hash, css_diagnostic,
+    auto_route,
+    show_room_group_grid, show_room_group_foyer, room_group_state_hash,
+)
 
 urlpatterns = [
     path('', auto_route, name="room_schedule/auto_route"),
     path('<int:venue_id>', show_building_grid, name="room_schedule/building"),
     path('<int:venue_id>/foyer', show_building_foyer, name="room_schedule/building_foyer"),
     path('<int:venue_id>/state_hash', building_state_hash, name="room_schedule/building_state_hash"),
+    path('<int:venue_id>/group/<int:group_id>', show_room_group_grid, name="room_schedule/room_group"),
+    path('<int:venue_id>/group/<int:group_id>/foyer', show_room_group_foyer, name="room_schedule/room_group_foyer"),
+    path('<int:venue_id>/group/<int:group_id>/state_hash', room_group_state_hash, name="room_schedule/room_group_state_hash"),
     path('<int:venue_id>/<int:room_id>', show_room, name="room_schedule/room"),
     path('<int:venue_id>/<int:room_id>/LED', room_led_status, name="room_schedule/room_led"),
     path('<int:venue_id>/<int:room_id>/book', book_adhoc, name="room_schedule/book_adhoc"),

@@ -1,3 +1,5 @@
+import asyncio
+
 from django.db import models
 from django.urls import reverse
 
@@ -11,7 +13,6 @@ class Building(models.Model):
     ]
 
     name = models.CharField(max_length=100)
-    ip_address = models.GenericIPAddressField(null=True, blank=True, unique=True, verbose_name="IP address")
     default_display = models.CharField(max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_GRID)
 
     def __str__(self):
@@ -25,7 +26,7 @@ class Building(models.Model):
         from room_schedules import o365_requests
 
         for room in self.room_set.filter(o365_calendar_email__isnull=False):
-            events = o365_requests.get_todays_events(room.o365_calendar_email)
+            events = asyncio.run(o365_requests.get_todays_events(room.o365_calendar_email))
             o365_ids = []
             new_events = 0
             for e in events:
