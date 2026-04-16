@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ building.name }}</title>
+    <title>{{ title }}</title>
     <link rel="stylesheet" href="{% static 'room_schedules/edgel/css/edgel-blue-university.min.css' %}">
     <style>
         html, body { height: 100%; margin: 0; overflow: hidden; }
@@ -17,7 +17,7 @@
     <!-- Header: logo | building name | clock -->
     <header class="card-header">
         <img class="masthead-logo" src="{% static 'room_schedules/edgel/media/uoe-logo.png' %}" alt="University of Edinburgh">
-        <h1 class="display-heading">{{ building.name }}</h1>
+        <h1 class="display-heading">{{ title }}</h1>
         <div class="display-clock"></div>
     </header>
 
@@ -60,7 +60,7 @@
 <script>EdGEL.Consent.Default.disabled = true;</script>
 <script>
     // ── Poll for changes ──
-    var STATE_HASH_URL = "{% url 'room_schedule/building_state_hash' venue_id=building.pk %}";
+    var STATE_HASH_URL = "{{ state_hash_url }}";
     var lastStateHash = null;
     var hashPollFailures = 0;
 

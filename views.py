@@ -23,7 +23,12 @@ def auto_route(request):
     ip = get_client_ip(request)
     if ip:
         from room_schedules.models import IpAddress
-        ip_obj = IpAddress.objects.select_related('room', 'building').filter(ip_address=ip).first()
+        ip_obj = (
+            IpAddress.objects
+            .select_related('room', 'building', 'room_group')
+            .filter(ip_address=ip)
+            .first()
+        )
         if ip_obj and ip_obj.room:
             room = ip_obj.room
             return redirect('room_schedule/room', venue_id=room.building_id, room_id=room.pk)
@@ -32,11 +37,24 @@ def auto_route(request):
             if building.default_display == Building.DISPLAY_FOYER:
                 return redirect('room_schedule/building_foyer', venue_id=building.pk)
             return redirect('room_schedule/building', venue_id=building.pk)
-    return HttpResponseNotFound("No room or building mapped to this IP ({}).".format(ip))
+        if ip_obj and ip_obj.room_group:
+            group = ip_obj.room_group
+            if group.default_display == RoomGroup.DISPLAY_FOYER:
+                return redirect(
+                    'room_schedule/room_group_foyer',
+                    venue_id=group.building_id,
+                    group_id=group.pk,
+                )
+            return redirect(
+                'room_schedule/room_group',
+                venue_id=group.building_id,
+                group_id=group.pk,
+            )
+    return HttpResponseNotFound("No room, building, or group mapped to this IP ({}).".format(ip))
 
 # Create your views here.
 from room_schedules.settings import HOUR_BREAK_POINT
-from room_schedules.models import Building, Event, Room
+from room_schedules.models import Building, Event, Room, RoomGroup
 
 
 def room_led_status(request, venue_id, room_id):
@@ -80,21 +98,21 @@ def room_led_status(request, venue_id, room_id):
     return response
 
 
-def _get_building_display_context(building):
-    """Build the shared template context for building-level display views."""
+def _get_rooms_display_context(rooms_qs, title, state_hash_url):
+    """Build template context for any multi-room display (building or group)."""
     now = datetime.datetime.now()
     current_date = (now - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
 
-    rooms = list(building.room_set.all().order_by('name'))
+    rooms = list(rooms_qs.order_by('name'))
+    room_ids = [r.pk for r in rooms]
     events = list(
         Event.objects.filter(
-            room__building=building,
+            room_id__in=room_ids,
             end_time__gte=now,
             cancelled=False,
         ).select_related('room').order_by('start_time')
     )
 
-    # Build per-room status info
     room_statuses = []
     for room in rooms:
         room_events = [e for e in events if e.room_id == room.pk]
@@ -121,7 +139,8 @@ def _get_building_display_context(building):
         })
 
     return {
-        'building': building,
+        'title': title,
+        'state_hash_url': state_hash_url,
         'rooms': rooms,
         'room_statuses': room_statuses,
         'events': events,
@@ -130,21 +149,59 @@ def _get_building_display_context(building):
     }
 
 
-def show_building_grid(request, venue_id):
-    building = get_object_or_404(Building, pk=venue_id)
-    context = _get_building_display_context(building)
+def _get_building_display_context(building):
+    from django.urls import reverse
+    context = _get_rooms_display_context(
+        building.room_set.all(),
+        building.name,
+        reverse('room_schedule/building_state_hash', args=[building.pk]),
+    )
+    context['building'] = building
+    return context
 
-    # Compute grid minute offsets for the schedule grid template
-    start_hour = 8
-    end_hour = 22
+
+def _get_room_group_display_context(group):
+    from django.urls import reverse
+    context = _get_rooms_display_context(
+        group.rooms.all(),
+        "{} — {}".format(group.building.name, group.name),
+        reverse(
+            'room_schedule/room_group_state_hash',
+            args=[group.building_id, group.pk],
+        ),
+    )
+    context['building'] = group.building
+    context['room_group'] = group
+    return context
+
+
+def _annotate_grid_offsets(room_statuses, start_hour, end_hour):
     max_minutes = (end_hour - start_hour) * 60
-
-    for rs in context['room_statuses']:
+    for rs in room_statuses:
         for event in rs['events']:
             st = event.start_time
             et = event.end_time
             event.grid_start_minutes = max(0, (st.hour - start_hour) * 60 + st.minute)
             event.grid_end_minutes = min(max_minutes, (et.hour - start_hour) * 60 + et.minute)
+
+
+def _events_state_hash(events_qs):
+    raw = '|'.join(
+        f'{pk},{name},{st.isoformat()},{et.isoformat()},{c}'
+        for pk, name, st, et, c in events_qs.values_list(
+            'pk', 'name', 'start_time', 'end_time', 'cancelled'
+        )
+    )
+    return hashlib.md5(raw.encode()).hexdigest()[:12]
+
+
+def show_building_grid(request, venue_id):
+    building = get_object_or_404(Building, pk=venue_id)
+    context = _get_building_display_context(building)
+
+    start_hour = 8
+    end_hour = 22
+    _annotate_grid_offsets(context['room_statuses'], start_hour, end_hour)
 
     context['start_hour'] = start_hour
     context['end_hour'] = end_hour
@@ -167,15 +224,45 @@ def building_state_hash(request, venue_id):
         room__building=building,
         end_time__gte=now,
         cancelled=False,
-    ).order_by('start_time').values_list('pk', 'name', 'start_time', 'end_time', 'cancelled')
+    ).order_by('start_time')
 
-    raw = '|'.join(
-        f'{pk},{name},{st.isoformat()},{et.isoformat()},{c}'
-        for pk, name, st, et, c in events
-    )
-    digest = hashlib.md5(raw.encode()).hexdigest()[:12]
+    response = JsonResponse({'hash': _events_state_hash(events)})
+    response['Cache-Control'] = 'no-store'
+    return response
 
-    response = JsonResponse({'hash': digest})
+
+def show_room_group_grid(request, venue_id, group_id):
+    group = get_object_or_404(RoomGroup, pk=group_id, building_id=venue_id)
+    context = _get_room_group_display_context(group)
+
+    start_hour = 8
+    end_hour = 22
+    _annotate_grid_offsets(context['room_statuses'], start_hour, end_hour)
+
+    context['start_hour'] = start_hour
+    context['end_hour'] = end_hour
+    context['hours'] = list(range(start_hour, end_hour))
+    return render(request, "room_schedules/building_grid.html", context)
+
+
+def show_room_group_foyer(request, venue_id, group_id):
+    group = get_object_or_404(RoomGroup, pk=group_id, building_id=venue_id)
+    context = _get_room_group_display_context(group)
+    return render(request, "room_schedules/building_foyer.html", context)
+
+
+def room_group_state_hash(request, venue_id, group_id):
+    """Return a short hash of a room group's current event state."""
+    group = get_object_or_404(RoomGroup, pk=group_id, building_id=venue_id)
+    now = datetime.datetime.now()
+
+    events = Event.objects.filter(
+        room__in=group.rooms.all(),
+        end_time__gte=now,
+        cancelled=False,
+    ).order_by('start_time')
+
+    response = JsonResponse({'hash': _events_state_hash(events)})
     response['Cache-Control'] = 'no-store'
     return response
 
