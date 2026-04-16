@@ -1,7 +1,7 @@
 import json
 import httplib2
 import msal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
 
@@ -57,7 +57,7 @@ def get_todays_events(room_email):
 
     Returns a list of dicts:
         {id, name, organiser, start_time, end_time, cancelled}
-    where start_time and end_time are naive datetime objects in local time.
+    where start_time and end_time are timezone-aware UTC datetimes (Graph API's default).
     """
     now = datetime.now()
     if now.hour < HOUR_BREAK_POINT:
@@ -95,8 +95,8 @@ def get_todays_events(room_email):
             "id": item["id"],
             "name": item.get("subject", ""),
             "organiser": item.get("organizer", {}).get("emailAddress", {}).get("name", ""),
-            "start_time": datetime.fromisoformat(item["start"]["dateTime"].rstrip("Z")),
-            "end_time": datetime.fromisoformat(item["end"]["dateTime"].rstrip("Z")),
+            "start_time": datetime.fromisoformat(item["start"]["dateTime"].rstrip("Z")).replace(tzinfo=timezone.utc),
+            "end_time": datetime.fromisoformat(item["end"]["dateTime"].rstrip("Z")).replace(tzinfo=timezone.utc),
             "cancelled": item.get("isCancelled", False),
         })
     return results
