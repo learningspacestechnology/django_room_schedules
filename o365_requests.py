@@ -147,18 +147,11 @@ def _room_item_to_dict(item):
 def list_tenant_rooms():
     """Return all room mailboxes in the tenant via Graph /places.
 
+    Queries /places/microsoft.graph.room, paginating 100 results at a time
+    via manual $skip/$top so tenants with >100 rooms aren't truncated, and
+    deduplicates by email.
+
     Requires Place.Read.All on the app registration.
-    Follows @odata.nextLink so tenants with >100 rooms aren't truncated.
-
-    Unions results from /places/microsoft.graph.room with the per-roomlist
-    rooms endpoint, because Graph's /places/microsoft.graph.room silently
-    omits rooms whose Exchange Places metadata isn't fully indexed.
-    Deduplicates by email.
-
-    When O365_ROOMLIST_EMAIL is set, additionally queries that specific
-    RoomList's /rooms and /workspaces sub-collections. Workspaces are a
-    separate place type from rooms in Graph and are otherwise invisible
-    to /places/microsoft.graph.room.
 
     Returns a list of dicts: {email, name, building, floor, capacity}.
     """
