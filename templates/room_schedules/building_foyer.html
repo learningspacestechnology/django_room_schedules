@@ -1,21 +1,24 @@
 {% load static %}
 <!doctype html>
-<html lang="en">
+<html lang="en-gb">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="{% static 'room_schedules/edgel/css/edgel-blue-university.min.css' %}">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="{% static 'room_schedules/edgel/js/edgel.bundle.min.js' %}"></script>
+    <script>EdGEL.Consent.Default.disabled = true;</script>
+    <link rel="stylesheet" type="text/css" href="{% static 'room_schedules/edgel/css/edgel-blue-university.min.css' %}">
     <style>
         html, body { height: 100%; margin: 0; overflow: hidden; }
     </style>
 </head>
 <body>
 
-<div class="card card-display" data-bs-page-reload-seconds="300" data-bs-browser-time="true" data-bs-page-hold-seconds="15">
+<div class="card card-display" data-bs-animate="true" data-bs-page-reload-seconds="300" data-bs-page-hold-seconds="15" data-bs-screensaver-seconds="0">
 
-    <header class="card-header">
-        <img class="masthead-logo" src="{% static 'room_schedules/edgel/media/uoe-logo.png' %}" alt="University of Edinburgh">
+    <header role="banner" class="card-header">
+        <img class="masthead-logo" src="{% static 'room_schedules/edgel/media/uoe-logo.png' %}" alt="The University of Edinburgh logo">
         <h1 class="display-heading">{{ title }}</h1>
         <div class="display-clock">
             <div></div>
@@ -23,10 +26,10 @@
         </div>
     </header>
 
-    <main class="card-body" data-provide="uoe-display">
-        <div class="display-page">
-            <div class="row row-cols-1 g-3">
-                {% for rs in room_statuses %}
+    <main class="card-body fade show" data-provide="uoe-display">
+        {% for rs in room_statuses %}
+            <div class="display-page">
+                <div class="row row-cols-1 g-3">
                     <h2 class="display-room">{{ rs.room.label }}</h2>
                     {% for event in rs.events %}
                         <div class="col">
@@ -50,14 +53,18 @@
                         <div class="col">
                             <div class="card">
                                 <div class="card-body display-booking display-muted">
-                                    No bookings today
+                                    No bookings
+                                    <div class="display-right-stack">
+                                        <div><span class="bi-calendar4-event" aria-hidden="true"></span></div>
+                                        <div><span class="bi-clock" aria-hidden="true"></span></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     {% endfor %}
-                {% endfor %}
+                </div>
             </div>
-        </div>
+        {% endfor %}
     </main>
 
     <footer class="card-footer">
@@ -66,8 +73,8 @@
 
 </div>
 
-<script src="{% static 'room_schedules/edgel/js/edgel.bundle.min.js' %}"></script>
-<script>EdGEL.Consent.Default.disabled = true;</script>
+<div class="modal hero-bg" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"><div class="modal-dialog"></div></div>
+
 <script>
     var STATE_HASH_URL = "{{ state_hash_url }}";
     var lastStateHash = null;
