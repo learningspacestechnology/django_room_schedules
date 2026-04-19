@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ room.name }}</title>
+    <title>{{ room.label }}</title>
     <link rel="stylesheet" href="{% static 'room_schedules/brand.css' %}">
     <style>
 
@@ -442,7 +442,7 @@
         </div>
         <div class="header-centre">
             <div class="venue-name">{{ room.venue.name }}</div>
-            <div class="room-name">{{ room.name }}</div>
+            <div class="room-name">{{ room.label }}</div>
             {% if is_available %}
                 {% if is_warning %}
                     <div class="status-label">Busy Soon</div>

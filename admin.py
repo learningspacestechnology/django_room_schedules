@@ -1,26 +1,16 @@
-import asyncio
+from itertools import groupby
 
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.shortcuts import get_object_or_404, redirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import action
 
-from room_schedules.models import Building, Room, IpAddress, RoomGroup
-from room_schedules.o365_requests import get_todays_events, list_tenant_rooms
-
-
-async def _filter_accessible_rooms(rooms):
-    async def check(room):
-        try:
-            await get_todays_events(room['email'], limit=1)
-            return True
-        except RuntimeError:
-            return False
-    results = await asyncio.gather(*(check(r) for r in rooms))
-    return [r for r, ok in zip(rooms, results) if ok]
+from room_schedules.models import Building, O365Room, Room, IpAddress, RoomGroup
+from room_schedules.tasks import sync_o365_rooms
 
 
 class IpAddressInline(TabularInline):
@@ -70,60 +60,16 @@ class BuildingAdmin(ModelAdmin):
     inlines = [BuildingIpAddressInline, RoomInline, RoomGroupInline]
     actions_detail = ['discover_rooms']
 
-    @action(description="Discover rooms from O365", url_path="discover-rooms")
+    @action(description="Sync O365 rooms now", url_path="sync-o365-rooms")
     def discover_rooms(self, request, object_id):
         building = get_object_or_404(Building, pk=object_id)
-        change_url = reverse('admin:room_schedules_building_change', args=[building.pk])
-
-        try:
-            tenant_rooms = list_tenant_rooms()
-        except RuntimeError as exc:
-            messages.error(request, f"Could not list rooms from O365: {exc}")
-            return redirect(change_url)
-
-        existing_emails = set(
-            Room.objects.values_list('o365_calendar_email', flat=True)
-        )
-        available = [r for r in tenant_rooms if r['email'] not in existing_emails]
-        available.sort(key=lambda r: (r.get('building') or '', r['name']))
-
-        if request.method == 'POST':
-            selected = set(request.POST.getlist('emails'))
-            by_email = {r['email']: r for r in available}
-            created = 0
-            for email in selected:
-                room = by_email.get(email)
-                if not room:
-                    continue
-                Room.objects.create(
-                    building=building,
-                    name=room['name'] or email,
-                    o365_calendar_email=email,
-                    allow_booking=False,
-                )
-                created += 1
-            if created:
-                messages.success(request, f"Imported {created} room(s) into {building.name}.")
-            else:
-                messages.info(request, "No rooms imported.")
-            return redirect(change_url)
-
-        available = asyncio.run(_filter_accessible_rooms(available))
-
-        context = {
-            **self.admin_site.each_context(request),
-            'title': f'Discover rooms from O365 — {building.name}',
-            'subtitle': building.name,
-            'building': building,
-            'available_rooms': available,
-            'opts': Building._meta,
-            'change_url': change_url,
-        }
-        return render(
+        sync_o365_rooms.delay()
+        messages.info(
             request,
-            'admin/room_schedules/building/discover_rooms.html',
-            context,
+            "O365 room sync dispatched. New rooms will appear in the "
+            "\u201cO365 Rooms \u2192 Unassigned\u201d view once the worker finishes.",
         )
+        return redirect(reverse('admin:room_schedules_building_change', args=[building.pk]))
 
     def grid_link(self, obj):
         return format_html(
@@ -142,9 +88,9 @@ class BuildingAdmin(ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'building', 'o365_calendar_email', 'allow_booking', 'screen_link')
+    list_display = ('id', 'name', 'display_name', 'building', 'o365_calendar_email', 'allow_booking', 'screen_link')
     list_display_links = ('id', 'name')
-    search_fields = ('name', 'building__name')
+    search_fields = ('name', 'display_name', 'building__name')
     list_filter = ('building', 'groups')
     list_select_related = ('building',)
     inlines = [RoomIpAddressInline]
@@ -155,6 +101,238 @@ class RoomAdmin(ModelAdmin):
             obj.building_id, obj.id,
         )
     screen_link.short_description = 'Screen Link'
+
+
+# ----------------------------------------------------------------------
+# Custom O365 room management views (registered at admin-site level so
+# URLs resolve under /admin/room_schedules/ rather than /admin/room_schedules/room/)
+# ----------------------------------------------------------------------
+
+
+def o365_sync_now_view(request):
+    referer = request.META.get('HTTP_REFERER') or reverse('admin:room_schedules_o365_unassigned')
+    if request.method != 'POST':
+        return redirect(referer)
+    sync_o365_rooms.delay()
+    messages.info(
+        request,
+        "O365 sync dispatched \u2014 the room list will refresh within a few minutes.",
+    )
+    return redirect(referer)
+
+
+def o365_assigned_view(request):
+    if request.method == 'POST':
+        action_name = request.POST.get('action')
+        if action_name == 'move':
+            _handle_move(request)
+        elif action_name == 'toggle_booking':
+            _handle_toggle_booking(request)
+        return redirect(reverse('admin:room_schedules_o365_assigned'))
+
+    rooms = list(
+        Room.objects.filter(
+            o365_calendar_email__isnull=False,
+        ).select_related('building').order_by('building__name', 'name')
+    )
+    grouped = [
+        (building, list(items))
+        for building, items in groupby(rooms, key=lambda r: r.building)
+    ]
+
+    context = {
+        **admin.site.each_context(request),
+        'title': 'O365 Rooms \u2014 Assigned per Building',
+        'grouped_rooms': grouped,
+        'buildings': list(Building.objects.order_by('name')),
+        'opts': Room._meta,
+        'active_tab': 'assigned',
+        'assigned_url': reverse('admin:room_schedules_o365_assigned'),
+        'unassigned_url': reverse('admin:room_schedules_o365_unassigned'),
+        'sync_now_url': reverse('admin:room_schedules_o365_sync_now'),
+    }
+    return TemplateResponse(
+        request,
+        'admin/room_schedules/room/o365_assigned.html',
+        context,
+    )
+
+
+def _assigned_room_by_email():
+    """Return {email: Room} for every Room that has an o365 email."""
+    mapping = {}
+    for room in Room.objects.exclude(o365_calendar_email__isnull=True) \
+                            .exclude(o365_calendar_email='') \
+                            .select_related('building'):
+        mapping[room.o365_calendar_email] = room
+    return mapping
+
+
+def o365_unassigned_view(request):
+    if request.method == 'POST':
+        action_name = request.POST.get('action')
+        if action_name == 'assign':
+            _handle_assign(request)
+        elif action_name == 'bulk_assign':
+            _handle_bulk_assign(request)
+        return redirect(reverse('admin:room_schedules_o365_unassigned'))
+
+    assigned_by_email = _assigned_room_by_email()
+    assigned_emails = set(assigned_by_email)
+
+    unassigned_qs = O365Room.objects.filter(
+        missing_from_tenant=False,
+        no_calendar_access=False,
+    ).exclude(email__in=assigned_emails).order_by('building_hint', 'name')
+    grouped_unassigned = [
+        (hint or '(no building hint from O365)', list(items))
+        for hint, items in groupby(unassigned_qs, key=lambda r: r.building_hint)
+    ]
+
+    no_access_qs = list(O365Room.objects.filter(no_calendar_access=True).order_by('name'))
+    missing_qs = list(O365Room.objects.filter(missing_from_tenant=True).order_by('name'))
+    for room in no_access_qs + missing_qs:
+        room.assigned_room = assigned_by_email.get(room.email)
+
+    context = {
+        **admin.site.each_context(request),
+        'title': 'O365 Rooms \u2014 Unassigned',
+        'grouped_unassigned': grouped_unassigned,
+        'missing_rooms': missing_qs,
+        'no_access_rooms': no_access_qs,
+        'buildings': list(Building.objects.order_by('name')),
+        'opts': Room._meta,
+        'active_tab': 'unassigned',
+        'assigned_url': reverse('admin:room_schedules_o365_assigned'),
+        'unassigned_url': reverse('admin:room_schedules_o365_unassigned'),
+        'sync_now_url': reverse('admin:room_schedules_o365_sync_now'),
+    }
+    return TemplateResponse(
+        request,
+        'admin/room_schedules/room/o365_unassigned.html',
+        context,
+    )
+
+
+def _resolve_building(request, field='building_id'):
+    building_id = request.POST.get(field)
+    if not building_id:
+        messages.error(request, "Select a building.")
+        return None
+    try:
+        return Building.objects.get(pk=building_id)
+    except Building.DoesNotExist:
+        messages.error(request, "That building no longer exists.")
+        return None
+
+
+def _handle_toggle_booking(request):
+    room_id = request.POST.get('room_id')
+    if not room_id:
+        return
+    try:
+        room = Room.objects.get(pk=room_id)
+    except Room.DoesNotExist:
+        messages.error(request, "Room not found.")
+        return
+    room.allow_booking = not room.allow_booking
+    room.save(update_fields=['allow_booking'])
+    state = "enabled" if room.allow_booking else "disabled"
+    messages.success(request, f"Adhoc booking {state} for {room.label}.")
+
+
+def _handle_move(request):
+    room_id = request.POST.get('room_id')
+    if not room_id:
+        return
+    try:
+        room = Room.objects.get(pk=room_id)
+    except Room.DoesNotExist:
+        messages.error(request, "Room not found.")
+        return
+    building = _resolve_building(request)
+    if building is None:
+        return
+    if room.building_id == building.pk:
+        messages.info(request, f"{room.name} is already in {building.name}.")
+        return
+    old_building_name = room.building.name
+    room.move_to_building(building)
+    messages.success(
+        request,
+        f"Moved {room.name} from {old_building_name} to {building.name}.",
+    )
+
+
+def _handle_assign(request):
+    o365_room_id = request.POST.get('o365_room_id')
+    if not o365_room_id:
+        return
+    try:
+        o365_room = O365Room.objects.get(pk=o365_room_id)
+    except O365Room.DoesNotExist:
+        messages.error(request, "O365 room not found.")
+        return
+    building = _resolve_building(request)
+    if building is None:
+        return
+    if Room.objects.filter(o365_calendar_email=o365_room.email).exists():
+        messages.info(request, f"{o365_room.name} is already assigned.")
+        return
+    Room.objects.create(
+        name=o365_room.name,
+        building=building,
+        o365_calendar_email=o365_room.email,
+    )
+    messages.success(request, f"Assigned {o365_room.name} to {building.name}.")
+
+
+def _handle_bulk_assign(request):
+    o365_room_ids = request.POST.getlist('o365_room_ids')
+    if not o365_room_ids:
+        messages.info(request, "No rooms selected.")
+        return
+    building = _resolve_building(request)
+    if building is None:
+        return
+    already_assigned = set(
+        Room.objects.exclude(o365_calendar_email__isnull=True)
+                    .values_list('o365_calendar_email', flat=True)
+    )
+    created = 0
+    for o365_room in O365Room.objects.filter(pk__in=o365_room_ids):
+        if o365_room.email in already_assigned:
+            continue
+        Room.objects.create(
+            name=o365_room.name,
+            building=building,
+            o365_calendar_email=o365_room.email,
+        )
+        created += 1
+    messages.success(
+        request,
+        f"Assigned {created} room(s) to {building.name}.",
+    )
+
+
+def get_o365_admin_urls():
+    return [
+        path(
+            'room_schedules/o365_assigned/',
+            admin.site.admin_view(o365_assigned_view),
+            name='room_schedules_o365_assigned',
+        ),
+        path(
+            'room_schedules/o365_unassigned/',
+            admin.site.admin_view(o365_unassigned_view),
+            name='room_schedules_o365_unassigned',
+        ),
+        path(
+            'room_schedules/o365_sync_now/',
+            admin.site.admin_view(o365_sync_now_view),
+            name='room_schedules_o365_sync_now',
+        ),
+    ]
 
 
 @admin.register(RoomGroup)

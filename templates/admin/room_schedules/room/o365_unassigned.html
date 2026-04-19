@@ -1,0 +1,165 @@
+{% extends "admin/base_site.html" %}
+{% load i18n unfold %}
+
+{% block content %}
+    <div id="content-main" class="flex flex-col gap-6">
+        {% include "admin/room_schedules/room/_o365_tabs.html" %}
+
+        {% if grouped_unassigned %}
+            {# Bulk-assign form: lives above the table; checkboxes in the table reference it by `form=` attribute. #}
+            <form id="o365-bulk-assign" method="post" class="flex flex-wrap items-center gap-3 bg-white border border-base-200 dark:border-base-800 dark:bg-base-900 rounded-default px-4 py-3 shadow-xs">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="bulk_assign">
+                <span class="text-sm font-medium text-font-important-light dark:text-font-important-dark">Bulk assign ticked rooms to:</span>
+                <select name="building_id" class="border border-base-200 dark:border-base-800 bg-white dark:bg-base-900 rounded-default px-2 py-1 text-sm">
+                    <option value="">&mdash; select a building &mdash;</option>
+                    {% for b in buildings %}
+                        <option value="{{ b.id }}">{{ b.name }}</option>
+                    {% endfor %}
+                </select>
+                {% component "unfold/components/button.html" with submit=1 %}
+                    Assign selected
+                {% endcomponent %}
+            </form>
+
+            {% for hint, rooms in grouped_unassigned %}
+                <section class="flex flex-col gap-3">
+                    <header class="flex items-baseline gap-3">
+                        <h2 class="font-semibold text-lg text-font-important-light dark:text-font-important-dark">{{ hint }}</h2>
+                        <span class="text-xs uppercase tracking-wide text-font-subtle-light dark:text-font-subtle-dark">{{ rooms|length }} room{{ rooms|length|pluralize }}</span>
+                    </header>
+
+                    <div class="-mx-1 px-1 overflow-x-auto lg:rounded-default lg:border lg:border-base-200 lg:mx-0 lg:px-0 lg:shadow-xs lg:bg-white lg:dark:border-base-800 lg:dark:bg-base-900">
+                        <table class="block border-spacing-none border-separate w-full lg:table">
+                            <thead class="hidden lg:table-header-group">
+                                <tr>
+                                    <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark"></th>
+                                    <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Name</th>
+                                    <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Email</th>
+                                    <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Assign to building</th>
+                                </tr>
+                            </thead>
+                            {% for room in rooms %}
+                                <tbody class="block relative lg:table-row-group {% cycle '' 'bg-base-50 dark:bg-white/[.02]' %}">
+                                    <tr class="block border border-base-200 mb-3 rounded-default lg:table-row lg:border-none lg:mb-0 lg:rounded-none dark:border-base-800">
+                                        <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t lg:w-px dark:border-base-800">
+                                            <input type="checkbox" form="o365-bulk-assign" name="o365_room_ids" value="{{ room.id }}" id="bulk-{{ room.id }}">
+                                        </td>
+                                        <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t dark:border-base-800">
+                                            <label for="bulk-{{ room.id }}" class="cursor-pointer font-medium text-font-important-light dark:text-font-important-dark">{{ room.name }}</label>
+                                        </td>
+                                        <td class="border-b border-base-200 font-mono px-3 py-2 text-xs lg:border-b-0 lg:border-t dark:border-base-800">{{ room.email }}</td>
+                                        <td class="px-3 py-2 lg:border-t lg:border-base-200 lg:dark:border-base-800">
+                                            <form method="post" class="flex gap-2 items-center">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="assign">
+                                                <input type="hidden" name="o365_room_id" value="{{ room.id }}">
+                                                <select name="building_id" class="border border-base-200 dark:border-base-800 bg-white dark:bg-base-900 rounded-default px-2 py-1 text-sm">
+                                                    <option value="">&mdash; select &mdash;</option>
+                                                    {% for b in buildings %}
+                                                        <option value="{{ b.id }}">{{ b.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                {% component "unfold/components/button.html" with submit=1 variant="default" %}
+                                                    Assign
+                                                {% endcomponent %}
+                                            </form>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            {% endfor %}
+                        </table>
+                    </div>
+                </section>
+            {% endfor %}
+        {% else %}
+            <p class="text-font-default-light dark:text-font-default-dark">
+                No unassigned O365 rooms. Every room in the tenant has been assigned to a building.
+            </p>
+        {% endif %}
+
+        {% if no_access_rooms %}
+            <section class="flex flex-col gap-3">
+                <header class="flex items-baseline gap-3">
+                    <h2 class="font-semibold text-lg text-font-important-light dark:text-font-important-dark">No calendar access</h2>
+                    <span class="text-xs uppercase tracking-wide text-font-subtle-light dark:text-font-subtle-dark">{{ no_access_rooms|length }} room{{ no_access_rooms|length|pluralize }}</span>
+                </header>
+                <p class="text-sm text-font-default-light dark:text-font-default-dark">
+                    The service principal can see these rooms in the tenant but can&rsquo;t read their calendars.
+                    Until access is granted they will not produce events. Ensure access is granted then run
+                    &ldquo;Sync O365 rooms now&rdquo; above.
+                </p>
+
+                <div class="-mx-1 px-1 overflow-x-auto lg:rounded-default lg:border lg:border-base-200 lg:mx-0 lg:px-0 lg:shadow-xs lg:bg-white lg:dark:border-base-800 lg:dark:bg-base-900">
+                    <table class="block border-spacing-none border-separate w-full lg:table">
+                        <thead class="hidden lg:table-header-group">
+                            <tr>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Name</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Email</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">O365 building</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark"></th>
+                            </tr>
+                        </thead>
+                        {% for room in no_access_rooms %}
+                            <tbody class="block relative lg:table-row-group {% cycle '' 'bg-base-50 dark:bg-white/[.02]' %}">
+                                <tr class="block border border-base-200 mb-3 rounded-default lg:table-row lg:border-none lg:mb-0 lg:rounded-none dark:border-base-800">
+                                    <td class="border-b border-base-200 px-3 py-2 font-medium text-font-important-light dark:text-font-important-dark lg:border-b-0 lg:border-t dark:border-base-800">{{ room.name }}</td>
+                                    <td class="border-b border-base-200 font-mono px-3 py-2 text-xs lg:border-b-0 lg:border-t dark:border-base-800">{{ room.email }}</td>
+                                    <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t dark:border-base-800">{{ room.assigned_room.building.name|default:"&mdash;" }}</td>
+                                    <td class="px-3 py-2 lg:border-t lg:border-base-200 lg:dark:border-base-800">
+                                        {% if room.assigned_room %}
+                                            <a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-base-100 text-font-default-light dark:bg-base-800 dark:text-font-default-dark"
+                                               href="{% url 'admin:room_schedules_room_change' room.assigned_room.id %}">Edit Room</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        {% endfor %}
+                    </table>
+                </div>
+            </section>
+        {% endif %}
+
+        {% if missing_rooms %}
+            <section class="flex flex-col gap-3">
+                <header class="flex items-baseline gap-3">
+                    <h2 class="font-semibold text-lg text-font-important-light dark:text-font-important-dark">Missing from tenant</h2>
+                    <span class="text-xs uppercase tracking-wide text-font-subtle-light dark:text-font-subtle-dark">{{ missing_rooms|length }} room{{ missing_rooms|length|pluralize }}</span>
+                </header>
+                <p class="text-sm text-font-default-light dark:text-font-default-dark">
+                    These rooms were previously imported but weren&rsquo;t returned by the last O365 sync.
+                    They may have been deleted from the tenant, renamed, or temporarily hidden. Review and
+                    delete from the <a class="underline" href="{% url 'admin:room_schedules_room_changelist' %}">Rooms</a> admin if you&rsquo;re sure they&rsquo;re gone.
+                </p>
+
+                <div class="-mx-1 px-1 overflow-x-auto lg:rounded-default lg:border lg:border-base-200 lg:mx-0 lg:px-0 lg:shadow-xs lg:bg-white lg:dark:border-base-800 lg:dark:bg-base-900">
+                    <table class="block border-spacing-none border-separate w-full lg:table">
+                        <thead class="hidden lg:table-header-group">
+                            <tr>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Name</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Email</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Current building</th>
+                                <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark"></th>
+                            </tr>
+                        </thead>
+                        {% for room in missing_rooms %}
+                            <tbody class="block relative lg:table-row-group {% cycle '' 'bg-base-50 dark:bg-white/[.02]' %}">
+                                <tr class="block border border-base-200 mb-3 rounded-default lg:table-row lg:border-none lg:mb-0 lg:rounded-none dark:border-base-800">
+                                    <td class="border-b border-base-200 px-3 py-2 font-medium text-font-important-light dark:text-font-important-dark lg:border-b-0 lg:border-t dark:border-base-800">{{ room.name }}</td>
+                                    <td class="border-b border-base-200 font-mono px-3 py-2 text-xs lg:border-b-0 lg:border-t dark:border-base-800">{{ room.email }}</td>
+                                    <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t dark:border-base-800">{{ room.assigned_room.building.name|default:"&mdash;" }}</td>
+                                    <td class="px-3 py-2 lg:border-t lg:border-base-200 lg:dark:border-base-800">
+                                        {% if room.assigned_room %}
+                                            <a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-base-100 text-font-default-light dark:bg-base-800 dark:text-font-default-dark"
+                                               href="{% url 'admin:room_schedules_room_change' room.assigned_room.id %}">Edit / delete Room</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        {% endfor %}
+                    </table>
+                </div>
+            </section>
+        {% endif %}
+    </div>
+{% endblock %}

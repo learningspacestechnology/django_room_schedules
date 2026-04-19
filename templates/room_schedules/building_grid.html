@@ -31,7 +31,7 @@
         <dl class="display-schedule">
             {% for rs in room_statuses %}
             <div class="display-schedule-row" style="--edgel-schedule-row:{{ forloop.counter }};">
-                <dt class="display-schedule-room">{{ rs.room.name }}</dt>
+                <dt class="display-schedule-room">{{ rs.room.label }}</dt>
                 {% for event in rs.events %}
                 <dd class="display-schedule-event{% if event == rs.current_event %} display-highlight{% endif %}"
                     style="--edgel-start-minutes:{{ event.grid_start_minutes }}; --edgel-end-minutes:{{ event.grid_end_minutes }};">

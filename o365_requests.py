@@ -79,7 +79,7 @@ async def get_todays_events(room_email, limit=100):
         f"&$select=id,subject,organizer,start,end,isCancelled"
         f"&$top={limit}"
     )
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.get(
             url,
             headers={
@@ -106,9 +106,32 @@ async def get_todays_events(room_email, limit=100):
     return results
 
 
+async def filter_accessible_rooms(rooms, *, concurrency=20):
+    """Split `rooms` into (accessible, inaccessible) by probing each calendar.
+
+    A room is accessible iff get_todays_events(email, limit=1) returns without
+    raising RuntimeError. A Semaphore bounds concurrent Graph requests so large
+    tenants don't fan out unboundedly.
+    """
+    sem = asyncio.Semaphore(concurrency)
+
+    async def probe(room):
+        async with sem:
+            try:
+                await get_todays_events(room['email'], limit=1)
+                return True
+            except RuntimeError:
+                return False
+
+    flags = await asyncio.gather(*(probe(r) for r in rooms))
+    accessible = [r for r, ok in zip(rooms, flags) if ok]
+    inaccessible = [r for r, ok in zip(rooms, flags) if not ok]
+    return accessible, inaccessible
+
+
 def _graph_get_paginated_manual(url, token, page_size):
     """Yield items from a paginated Graph endpoint, following @odata.nextLink."""
-    h = httplib2.Http()
+    h = httplib2.Http(timeout=60)
     count=0
     while True:
         response, content = h.request(
