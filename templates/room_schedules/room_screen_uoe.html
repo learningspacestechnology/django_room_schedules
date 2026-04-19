@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ room.name }} – {{ room.building.name }}</title>
+    <title>{{ room.label }} – {{ room.building.name }}</title>
     {% if compact %}
     <script>
         /* ResizeObserver polyfill for legacy browsers */
@@ -203,7 +203,7 @@
     <!-- Header: logo | room name | clock -->
     <header class="card-header">
         <img class="masthead-logo" src="{% static 'room_schedules/edgel/media/uoe-logo.png' %}" alt="University of Edinburgh">
-        <h1 class="display-heading">{{ room.name }}</h1>
+        <h1 class="display-heading">{{ room.label }}</h1>
         <div class="display-clock"></div>
     </header>
 

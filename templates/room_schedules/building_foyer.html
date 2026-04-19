@@ -27,7 +27,7 @@
         <div class="display-page">
             <div class="row row-cols-1 g-3">
                 {% for rs in room_statuses %}
-                    <h2 class="display-room">{{ rs.room.name }}</h2>
+                    <h2 class="display-room">{{ rs.room.label }}</h2>
                     {% for event in rs.events %}
                         <div class="col">
                             <div class="card">
