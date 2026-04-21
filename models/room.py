@@ -21,6 +21,35 @@ class Room(models.Model):
         default=False,
         help_text="Allow adhoc bookings to be made from the display screen.",
     )
+    pagination_duration_seconds = models.PositiveIntegerField(
+        default=15,
+        verbose_name="Pagination duration (seconds)",
+        help_text=(
+            "How long each page of long content is held before scrolling to the next. "
+            "Applies regardless of whether the screensaver is enabled."
+        ),
+    )
+    screensaver_enabled = models.BooleanField(
+        default=False,
+        verbose_name="Enable screensaver",
+        help_text="Show the screensaver image periodically when this screen is displayed.",
+    )
+    content_duration_seconds = models.PositiveIntegerField(
+        default=600,
+        verbose_name="Content duration (seconds)",
+        help_text=(
+            "How long content is shown between screensaver appearances. "
+            "Only applies when the screensaver is enabled."
+        ),
+    )
+    screensaver_duration_seconds = models.PositiveIntegerField(
+        default=5,
+        verbose_name="Screensaver duration (seconds)",
+        help_text=(
+            "How long the screensaver image is shown before returning to content. "
+            "Only applies when the screensaver is enabled."
+        ),
+    )
 
     @property
     def label(self):

@@ -57,8 +57,20 @@ class BuildingAdmin(ModelAdmin):
     list_display = ('id', 'name', 'default_display', 'grid_link', 'foyer_link')
     list_display_links = ('id', 'name')
     search_fields = ('name',)
+    list_filter = ('screensaver_enabled',)
     inlines = [BuildingIpAddressInline, RoomInline, RoomGroupInline]
     actions_detail = ['discover_rooms']
+    fieldsets = (
+        (None, {'fields': ('name',)}),
+        ('Display', {'fields': ('default_display', 'pagination_duration_seconds')}),
+        ('Screensaver', {
+            'fields': (
+                'screensaver_enabled',
+                'content_duration_seconds',
+                'screensaver_duration_seconds',
+            ),
+        }),
+    )
 
     @action(description="Sync O365 rooms now", url_path="sync-o365-rooms")
     def discover_rooms(self, request, object_id):
@@ -91,9 +103,22 @@ class RoomAdmin(ModelAdmin):
     list_display = ('id', 'name', 'display_name', 'building', 'o365_calendar_email', 'allow_booking', 'screen_link')
     list_display_links = ('id', 'name')
     search_fields = ('name', 'display_name', 'building__name')
-    list_filter = ('building', 'groups')
+    list_filter = ('building', 'groups', 'screensaver_enabled')
     list_select_related = ('building',)
     inlines = [RoomIpAddressInline]
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'display_name', 'building', 'o365_calendar_email', 'allow_booking'),
+        }),
+        ('Display', {'fields': ('pagination_duration_seconds',)}),
+        ('Screensaver', {
+            'fields': (
+                'screensaver_enabled',
+                'content_duration_seconds',
+                'screensaver_duration_seconds',
+            ),
+        }),
+    )
 
     def screen_link(self, obj):
         return format_html(
@@ -340,10 +365,21 @@ class RoomGroupAdmin(ModelAdmin):
     list_display = ('id', 'name', 'building', 'default_display', 'grid_link', 'foyer_link')
     list_display_links = ('id', 'name')
     search_fields = ('name', 'building__name')
-    list_filter = ('building',)
+    list_filter = ('building', 'screensaver_enabled')
     list_select_related = ('building',)
     filter_horizontal = ('rooms',)
     inlines = [RoomGroupIpAddressInline]
+    fieldsets = (
+        (None, {'fields': ('name', 'building', 'rooms')}),
+        ('Display', {'fields': ('default_display', 'pagination_duration_seconds')}),
+        ('Screensaver', {
+            'fields': (
+                'screensaver_enabled',
+                'content_duration_seconds',
+                'screensaver_duration_seconds',
+            ),
+        }),
+    )
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)

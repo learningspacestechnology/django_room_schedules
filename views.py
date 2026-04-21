@@ -4,9 +4,30 @@ import hashlib
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
+from django.templatetags.static import static
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from django.utils import timezone
+
+from screens.views import view_unconfigured
+
+
+def _display_context(entity):
+    """Screensaver/pagination context for a Building, Room or RoomGroup."""
+    context = {"page_hold_seconds": entity.pagination_duration_seconds}
+    if entity.screensaver_enabled:
+        context.update({
+            "screensaver_src": static("room_schedules/screensaver.jpg"),
+            "screensaver_seconds": entity.screensaver_duration_seconds,
+            "page_reload_seconds": entity.content_duration_seconds,
+        })
+    else:
+        context.update({
+            "screensaver_src": "",
+            "screensaver_seconds": 0,
+            "page_reload_seconds": 300,
+        })
+    return context
 
 
 def get_client_ip(request):
@@ -50,7 +71,7 @@ def auto_route(request):
                 venue_id=group.building_id,
                 group_id=group.pk,
             )
-    return HttpResponseNotFound("No room, building, or group mapped to this IP ({}).".format(ip))
+    return view_unconfigured(request)
 
 # Create your views here.
 from room_schedules.settings import HOUR_BREAK_POINT
@@ -157,6 +178,7 @@ def _get_building_display_context(building):
         reverse('room_schedule/building_state_hash', args=[building.pk]),
     )
     context['building'] = building
+    context.update(_display_context(building))
     return context
 
 
@@ -172,6 +194,7 @@ def _get_room_group_display_context(group):
     )
     context['building'] = group.building
     context['room_group'] = group
+    context.update(_display_context(group))
     return context
 
 
@@ -351,6 +374,7 @@ def _get_room_display_context(room):
         'current_event_start_iso': current_event_start_iso,
         'next_event_start_iso': next_event_start_iso,
         'free_since_iso': free_since_iso,
+        **_display_context(room),
     }
 
 

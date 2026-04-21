@@ -17,9 +17,10 @@
 
 <div class="card card-display"
      data-bs-animate="true"
-     data-bs-page-reload-seconds="300"
-     data-bs-page-hold-seconds="15"
-     data-bs-screensaver-seconds="0"
+     data-bs-page-reload-seconds="{{ page_reload_seconds }}"
+     data-bs-page-hold-seconds="{{ page_hold_seconds }}"
+     data-bs-screensaver-src="{{ screensaver_src }}"
+     data-bs-screensaver-seconds="{{ screensaver_seconds }}"
      style="--edgel-schedule-start-hour:{{ start_hour }}; --edgel-schedule-end-hour:{{ end_hour }};">
 
     <header role="banner" class="card-header">
