@@ -1,0 +1,40 @@
+{# === LED lighting control START === #}
+{# Drives the optional local LED agent on UoE display devices. Silently no-ops on devices without the agent. #}
+<script>
+/* === LED lighting control START === */
+    (function() {
+        {% if is_warning %}
+        var ledColor = 'yellow';
+        {% elif is_available %}
+        var ledColor = 'green';
+        {% else %}
+        var ledColor = 'red';
+        {% endif %}
+
+        var BASE = 'http://127.0.0.1:8765';
+        var agentReady = false;
+
+        function setColor(color, opts) {
+            var url = BASE + '/led?color=' + encodeURIComponent(color);
+            var init = { cache: 'no-store' };
+            if (opts && opts.keepalive) init.keepalive = true;
+            return fetch(url, init).catch(function() { /* ignore */ });
+        }
+
+        // Probe first so devices without the agent fail fast and quietly.
+        fetch(BASE + '/ping', { cache: 'no-store' })
+            .then(function(r) {
+                if (!r.ok) return;
+                agentReady = true;
+                setColor(ledColor);
+            })
+            .catch(function() { /* no LED agent on this device */ });
+
+        // Turn the ring off on unload so a disconnected/closed browser doesn't leave a stale colour lit.
+        window.addEventListener('pagehide', function() {
+            if (agentReady) setColor('off', { keepalive: true });
+        });
+    })();
+/* === LED lighting control END === */
+</script>
+{# === LED lighting control END === #}
