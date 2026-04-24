@@ -397,7 +397,7 @@ def show_room(request, venue_id, room_id):
     return render(request, "room_schedules/room_screen_uoe.html", context)
 
 
-def css_diagnostic(request, venue_id, room_id):
+def css_diagnostic(request):
     return render(request, "room_schedules/css_diagnostic.html")
 
 
