@@ -34,5 +34,5 @@ urlpatterns = [
     path('<int:venue_id>/<int:room_id>/LED', room_led_status, name="room_schedule/room_led"),
     path('<int:venue_id>/<int:room_id>/book', book_adhoc, name="room_schedule/book_adhoc"),
     path('<int:venue_id>/<int:room_id>/state_hash', room_state_hash, name="room_schedule/room_state_hash"),
-    path('<int:venue_id>/<int:room_id>/diagnostic', css_diagnostic, name="room_schedule/css_diagnostic"),
+    path('diagnostic', css_diagnostic, name="room_schedule/css_diagnostic"),
 ]

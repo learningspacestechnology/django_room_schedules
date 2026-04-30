@@ -79,7 +79,7 @@ async def get_todays_events(room_email, limit=100):
         f"&$select=id,subject,organizer,start,end,isCancelled"
         f"&$top={limit}"
     )
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.get(
             url,
             headers={
@@ -106,9 +106,32 @@ async def get_todays_events(room_email, limit=100):
     return results
 
 
+async def filter_accessible_rooms(rooms, *, concurrency=20):
+    """Split `rooms` into (accessible, inaccessible) by probing each calendar.
+
+    A room is accessible iff get_todays_events(email, limit=1) returns without
+    raising RuntimeError. A Semaphore bounds concurrent Graph requests so large
+    tenants don't fan out unboundedly.
+    """
+    sem = asyncio.Semaphore(concurrency)
+
+    async def probe(room):
+        async with sem:
+            try:
+                await get_todays_events(room['email'], limit=1)
+                return True
+            except RuntimeError:
+                return False
+
+    flags = await asyncio.gather(*(probe(r) for r in rooms))
+    accessible = [r for r, ok in zip(rooms, flags) if ok]
+    inaccessible = [r for r, ok in zip(rooms, flags) if not ok]
+    return accessible, inaccessible
+
+
 def _graph_get_paginated_manual(url, token, page_size):
     """Yield items from a paginated Graph endpoint, following @odata.nextLink."""
-    h = httplib2.Http()
+    h = httplib2.Http(timeout=60)
     count=0
     while True:
         response, content = h.request(
@@ -147,18 +170,11 @@ def _room_item_to_dict(item):
 def list_tenant_rooms():
     """Return all room mailboxes in the tenant via Graph /places.
 
+    Queries /places/microsoft.graph.room, paginating 100 results at a time
+    via manual $skip/$top so tenants with >100 rooms aren't truncated, and
+    deduplicates by email.
+
     Requires Place.Read.All on the app registration.
-    Follows @odata.nextLink so tenants with >100 rooms aren't truncated.
-
-    Unions results from /places/microsoft.graph.room with the per-roomlist
-    rooms endpoint, because Graph's /places/microsoft.graph.room silently
-    omits rooms whose Exchange Places metadata isn't fully indexed.
-    Deduplicates by email.
-
-    When O365_ROOMLIST_EMAIL is set, additionally queries that specific
-    RoomList's /rooms and /workspaces sub-collections. Workspaces are a
-    separate place type from rooms in Graph and are otherwise invisible
-    to /places/microsoft.graph.room.
 
     Returns a list of dicts: {email, name, building, floor, capacity}.
     """

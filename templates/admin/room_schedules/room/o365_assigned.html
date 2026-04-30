@@ -1,0 +1,85 @@
+{% extends "admin/base_site.html" %}
+{% load i18n unfold %}
+
+{% block content %}
+    <div id="content-main" class="flex flex-col gap-6">
+        {% include "admin/room_schedules/room/_o365_tabs.html" %}
+
+        {% if grouped_rooms %}
+            {% for building, rooms in grouped_rooms %}
+                <section class="flex flex-col gap-3">
+                    <header class="flex items-baseline gap-3">
+                        <h2 class="font-semibold text-lg text-font-important-light dark:text-font-important-dark">{{ building.name }}</h2>
+                        <span class="text-xs uppercase tracking-wide text-font-subtle-light dark:text-font-subtle-dark">{{ rooms|length }} room{{ rooms|length|pluralize }}</span>
+                    </header>
+
+                    <div class="-mx-1 px-1 overflow-x-auto lg:rounded-default lg:border lg:border-base-200 lg:mx-0 lg:px-0 lg:shadow-xs lg:bg-white lg:dark:border-base-800 lg:dark:bg-base-900">
+                        <table class="block border-spacing-none border-separate w-full lg:table">
+                            <thead class="hidden lg:table-header-group">
+                                <tr>
+                                    <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Name</th>
+                                    <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Email</th>
+                                    <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Booking</th>
+                                    <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Links</th>
+                                    <th class="font-medium px-3 py-3 text-left text-font-important-light text-xs uppercase dark:text-font-important-dark">Move to</th>
+                                </tr>
+                            </thead>
+                            {% for room in rooms %}
+                                <tbody class="block relative lg:table-row-group {% cycle '' 'bg-base-50 dark:bg-white/[.02]' %}">
+                                    <tr class="block border border-base-200 mb-3 rounded-default lg:table-row lg:border-none lg:mb-0 lg:rounded-none dark:border-base-800">
+                                        <td class="border-b border-base-200 px-3 py-2 font-medium text-font-important-light dark:text-font-important-dark lg:border-b-0 lg:border-t dark:border-base-800">{{ room.label }}</td>
+                                        <td class="border-b border-base-200 font-mono px-3 py-2 text-xs lg:border-b-0 lg:border-t dark:border-base-800">{{ room.o365_calendar_email }}</td>
+                                        <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t dark:border-base-800">
+                                            <form method="post" class="inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="toggle_booking">
+                                                <input type="hidden" name="room_id" value="{{ room.id }}">
+                                                {% if room.allow_booking %}
+                                                    <button type="submit"
+                                                            title="Click to disable adhoc booking"
+                                                            class="cursor-pointer inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-400 dark:hover:bg-green-500/30">Enabled</button>
+                                                {% else %}
+                                                    <button type="submit"
+                                                            title="Click to enable adhoc booking"
+                                                            class="cursor-pointer inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-base-100 text-font-subtle-light hover:bg-base-200 dark:bg-base-800 dark:text-font-subtle-dark dark:hover:bg-base-700">Off</button>
+                                                {% endif %}
+                                            </form>
+                                        </td>
+                                        <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t dark:border-base-800">
+                                            <div class="flex gap-2">
+                                                <a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-400"
+                                                   href="/event_schedules/{{ room.building_id }}/{{ room.id }}">Screen</a>
+                                                <a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-base-100 text-font-default-light dark:bg-base-800 dark:text-font-default-dark"
+                                                   href="{% url 'admin:room_schedules_room_change' room.id %}">Edit</a>
+                                            </div>
+                                        </td>
+                                        <td class="px-3 py-2 lg:border-t lg:border-base-200 lg:dark:border-base-800">
+                                            <form method="post" class="flex gap-2 items-center">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="move">
+                                                <input type="hidden" name="room_id" value="{{ room.id }}">
+                                                <select name="building_id" class="border border-base-200 dark:border-base-800 bg-white dark:bg-base-900 rounded-default px-2 py-1 text-sm">
+                                                    {% for b in buildings %}
+                                                        <option value="{{ b.id }}" {% if b.id == room.building_id %}selected{% endif %}>{{ b.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                {% component "unfold/components/button.html" with submit=1 variant="default" %}
+                                                    Move
+                                                {% endcomponent %}
+                                            </form>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            {% endfor %}
+                        </table>
+                    </div>
+                </section>
+            {% endfor %}
+        {% else %}
+            <p class="text-font-default-light dark:text-font-default-dark">
+                No O365 rooms have been assigned to a building yet. Head to the
+                <a href="{{ unassigned_url }}" class="underline">Unassigned</a> tab to assign some.
+            </p>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ room.name }} – {{ room.building.name }}</title>
+    <title>{{ room.label }} – {{ room.building.name }}</title>
     {% if compact %}
     <script>
         /* ResizeObserver polyfill for legacy browsers */
@@ -195,15 +195,16 @@
 <body>
 
 <div class="card card-display"
-     {% if compact %}data-bs-page-reload-seconds="0"{% else %}data-bs-page-reload-seconds="300"{% endif %}
+     {% if compact %}data-bs-page-reload-seconds="0"{% else %}data-bs-page-reload-seconds="{{ page_reload_seconds }}"{% endif %}
      data-bs-browser-time="true"
-     data-bs-page-hold-seconds="15"
+     data-bs-page-hold-seconds="{{ page_hold_seconds }}"
+     {% if not compact %}data-bs-screensaver-src="{{ screensaver_src }}" data-bs-screensaver-seconds="{{ screensaver_seconds }}"{% endif %}
      {% if compact %}data-bs-animate="false"{% endif %}>
 
     <!-- Header: logo | room name | clock -->
     <header class="card-header">
         <img class="masthead-logo" src="{% static 'room_schedules/edgel/media/uoe-logo.png' %}" alt="University of Edinburgh">
-        <h1 class="display-heading">{{ room.name }}</h1>
+        <h1 class="display-heading">{{ room.label }}</h1>
         <div class="display-clock"></div>
     </header>
 
@@ -328,6 +329,10 @@
     })();
     {% endif %}
 </script>
+
+{# === LED lighting control START === #}
+{% include "room_schedules/_led_control.html" %}
+{# === LED lighting control END === #}
 
 {% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
 <script>

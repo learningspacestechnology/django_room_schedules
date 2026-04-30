@@ -1,0 +1,27 @@
+{% load unfold %}
+<div class="flex flex-wrap items-center gap-3 border-b border-base-200 dark:border-base-800 pb-3">
+    <div class="flex gap-1">
+        <a href="{{ assigned_url }}"
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-default text-sm font-medium {% if active_tab == 'assigned' %}bg-primary-600 text-white dark:bg-primary-500{% else %}bg-base-100 text-font-default-light hover:bg-base-200 dark:bg-base-800 dark:text-font-default-dark dark:hover:bg-base-700{% endif %}">
+            <span class="material-symbols-outlined text-base">meeting_room</span>
+            Assigned per Building
+        </a>
+        <a href="{{ unassigned_url }}"
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-default text-sm font-medium {% if active_tab == 'unassigned' %}bg-primary-600 text-white dark:bg-primary-500{% else %}bg-base-100 text-font-default-light hover:bg-base-200 dark:bg-base-800 dark:text-font-default-dark dark:hover:bg-base-700{% endif %}">
+            <span class="material-symbols-outlined text-base">help_outline</span>
+            Unassigned
+        </a>
+    </div>
+
+    <form method="post" action="{{ sync_now_url }}" class="ml-auto" x-data="{ syncing: false }" @submit="syncing = true">
+        {% csrf_token %}
+        <button type="submit"
+                x-bind:disabled="syncing"
+                class="font-medium inline-flex items-center gap-2 px-3 py-2 rounded-default justify-center whitespace-nowrap border border-base-200 bg-white shadow-xs text-important dark:border-base-700 dark:bg-transparent hover:bg-base-100/80 dark:hover:bg-base-800/80 disabled:cursor-wait disabled:opacity-70">
+            <span class="material-symbols-outlined text-base" x-show="!syncing">sync</span>
+            <span class="material-symbols-outlined text-base animate-spin" x-show="syncing" x-cloak>progress_activity</span>
+            <span x-show="!syncing">Sync O365 rooms now</span>
+            <span x-show="syncing" x-cloak>Syncing&hellip;</span>
+        </button>
+    </form>
+</div>
