@@ -75,31 +75,5 @@
 
 <div class="modal hero-bg" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"><div class="modal-dialog"></div></div>
 
-<script>
-    var STATE_HASH_URL = "{{ state_hash_url }}";
-    var lastStateHash = null;
-    var hashPollFailures = 0;
-
-    function pollStateHash() {
-        fetch(STATE_HASH_URL)
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                hashPollFailures = 0;
-                if (lastStateHash === null) {
-                    lastStateHash = data.hash;
-                } else if (data.hash !== lastStateHash) {
-                    location.reload();
-                }
-            })
-            .catch(function() {
-                hashPollFailures++;
-                if (hashPollFailures >= 5) location.reload();
-            });
-    }
-
-    pollStateHash();
-    setInterval(pollStateHash, 10000);
-</script>
-
 </body>
 </html>

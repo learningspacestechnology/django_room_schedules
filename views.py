@@ -14,18 +14,19 @@ from screens.views import view_unconfigured
 
 def _display_context(entity):
     """Screensaver/pagination context for a Building, Room or RoomGroup."""
-    context = {"page_hold_seconds": entity.pagination_duration_seconds}
+    context = {
+        "page_hold_seconds": entity.pagination_duration_seconds,
+        "page_reload_seconds": 300,
+    }
     if entity.screensaver_enabled:
         context.update({
             "screensaver_src": static("room_schedules/screensaver.jpg"),
             "screensaver_seconds": entity.screensaver_duration_seconds,
-            "page_reload_seconds": entity.content_duration_seconds,
         })
     else:
         context.update({
             "screensaver_src": "",
             "screensaver_seconds": 0,
-            "page_reload_seconds": 300,
         })
     return context
 
@@ -208,6 +209,21 @@ def _annotate_grid_offsets(room_statuses, start_hour, end_hour):
             event.grid_end_minutes = min(max_minutes, (et.hour - start_hour) * 60 + et.minute)
 
 
+# State-hash polling for the building grid / foyer / room-group views is
+# preserved here as no-op infrastructure: the helper below, the
+# `building_state_hash` and `room_group_state_hash` endpoints, their URL
+# routes, and the `state_hash_url` plumbing in
+# `_get_rooms_display_context`/`_get_building_display_context`/
+# `_get_room_group_display_context` are no longer consumed by the bundled
+# EdGEL templates. They were originally polled every 10s by
+# `building_grid.html` and `building_foyer.html` to trigger
+# `location.reload()` when bookings changed, but that disrupted the
+# pagination cycle and over-ran the screensaver loop. EdGEL's own
+# `_setReload` does a graceful innerHTML swap at the next pagination
+# wraparound instead. If a future redesign moves away from EdGEL to
+# custom templates, the polling can be re-enabled by re-adding the
+# `<script>` block (see git history for those two templates) into the new
+# templates. Room screens still poll `room_state_hash` and are unaffected.
 def _events_state_hash(events_qs):
     raw = '|'.join(
         f'{pk},{name},{st.isoformat()},{et.isoformat()},{c}'
@@ -222,13 +238,12 @@ def show_building_grid(request, venue_id):
     building = get_object_or_404(Building, pk=venue_id)
     context = _get_building_display_context(building)
 
-    start_hour = 8
-    end_hour = 22
+    start_hour = building.grid_start_hour
+    end_hour = building.grid_end_hour
     _annotate_grid_offsets(context['room_statuses'], start_hour, end_hour)
 
     context['start_hour'] = start_hour
     context['end_hour'] = end_hour
-    context['hours'] = list(range(start_hour, end_hour))
     return render(request, "room_schedules/building_grid.html", context)
 
 
@@ -258,13 +273,12 @@ def show_room_group_grid(request, venue_id, group_id):
     group = get_object_or_404(RoomGroup, pk=group_id, building_id=venue_id)
     context = _get_room_group_display_context(group)
 
-    start_hour = 8
-    end_hour = 22
+    start_hour = group.grid_start_hour
+    end_hour = group.grid_end_hour
     _annotate_grid_offsets(context['room_statuses'], start_hour, end_hour)
 
     context['start_hour'] = start_hour
     context['end_hour'] = end_hour
-    context['hours'] = list(range(start_hour, end_hour))
     return render(request, "room_schedules/building_grid.html", context)
 
 
