@@ -209,6 +209,21 @@ def _annotate_grid_offsets(room_statuses, start_hour, end_hour):
             event.grid_end_minutes = min(max_minutes, (et.hour - start_hour) * 60 + et.minute)
 
 
+# State-hash polling for the building grid / foyer / room-group views is
+# preserved here as no-op infrastructure: the helper below, the
+# `building_state_hash` and `room_group_state_hash` endpoints, their URL
+# routes, and the `state_hash_url` plumbing in
+# `_get_rooms_display_context`/`_get_building_display_context`/
+# `_get_room_group_display_context` are no longer consumed by the bundled
+# EdGEL templates. They were originally polled every 10s by
+# `building_grid.html` and `building_foyer.html` to trigger
+# `location.reload()` when bookings changed, but that disrupted the
+# pagination cycle and over-ran the screensaver loop. EdGEL's own
+# `_setReload` does a graceful innerHTML swap at the next pagination
+# wraparound instead. If a future redesign moves away from EdGEL to
+# custom templates, the polling can be re-enabled by re-adding the
+# `<script>` block (see git history for those two templates) into the new
+# templates. Room screens still poll `room_state_hash` and are unaffected.
 def _events_state_hash(events_qs):
     raw = '|'.join(
         f'{pk},{name},{st.isoformat()},{et.isoformat()},{c}'
