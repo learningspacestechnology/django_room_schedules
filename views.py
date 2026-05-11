@@ -238,13 +238,12 @@ def show_building_grid(request, venue_id):
     building = get_object_or_404(Building, pk=venue_id)
     context = _get_building_display_context(building)
 
-    start_hour = 8
-    end_hour = 22
+    start_hour = building.grid_start_hour
+    end_hour = building.grid_end_hour
     _annotate_grid_offsets(context['room_statuses'], start_hour, end_hour)
 
     context['start_hour'] = start_hour
     context['end_hour'] = end_hour
-    context['hours'] = list(range(start_hour, end_hour))
     return render(request, "room_schedules/building_grid.html", context)
 
 
@@ -274,13 +273,12 @@ def show_room_group_grid(request, venue_id, group_id):
     group = get_object_or_404(RoomGroup, pk=group_id, building_id=venue_id)
     context = _get_room_group_display_context(group)
 
-    start_hour = 8
-    end_hour = 22
+    start_hour = group.grid_start_hour
+    end_hour = group.grid_end_hour
     _annotate_grid_offsets(context['room_statuses'], start_hour, end_hour)
 
     context['start_hour'] = start_hour
     context['end_hour'] = end_hour
-    context['hours'] = list(range(start_hour, end_hour))
     return render(request, "room_schedules/building_grid.html", context)
 
 

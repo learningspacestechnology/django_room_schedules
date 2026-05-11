@@ -62,7 +62,12 @@ class BuildingAdmin(ModelAdmin):
     actions_detail = ['discover_rooms']
     fieldsets = (
         (None, {'fields': ('name',)}),
-        ('Display', {'fields': ('default_display', 'pagination_duration_seconds')}),
+        ('Display', {'fields': (
+            'default_display',
+            'pagination_duration_seconds',
+            'grid_start_hour',
+            'grid_end_hour',
+        )}),
         ('Screensaver', {
             'fields': (
                 'screensaver_enabled',
@@ -369,7 +374,12 @@ class RoomGroupAdmin(ModelAdmin):
     inlines = [RoomGroupIpAddressInline]
     fieldsets = (
         (None, {'fields': ('name', 'building', 'rooms')}),
-        ('Display', {'fields': ('default_display', 'pagination_duration_seconds')}),
+        ('Display', {'fields': (
+            'default_display',
+            'pagination_duration_seconds',
+            'grid_start_hour',
+            'grid_end_hour',
+        )}),
         ('Screensaver', {
             'fields': (
                 'screensaver_enabled',
