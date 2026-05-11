@@ -15,11 +15,13 @@ class Building(models.Model):
     name = models.CharField(max_length=100)
     default_display = models.CharField(max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_GRID)
     pagination_duration_seconds = models.PositiveIntegerField(
-        default=15,
+        default=20,
         verbose_name="Pagination duration (seconds)",
         help_text=(
-            "How long each page of long content is held before scrolling to the next. "
-            "Applies regardless of whether the screensaver is enabled."
+            "How long each page is held before scrolling to the next. "
+            "On single-page screens (and any building view whose bookings fit on one page), "
+            "this also controls how often the screensaver appears: content shows for this duration, "
+            "screensaver shows for the screensaver duration, then the cycle repeats."
         ),
     )
     screensaver_enabled = models.BooleanField(
@@ -31,8 +33,8 @@ class Building(models.Model):
         default=600,
         verbose_name="Content duration (seconds)",
         help_text=(
-            "How long content is shown between screensaver appearances. "
-            "Only applies when the screensaver is enabled."
+            "Deprecated: no longer used. The HTML re-fetch interval is hardcoded to 300s, "
+            "and booking changes are picked up within ~10s via state-hash polling."
         ),
     )
     screensaver_duration_seconds = models.PositiveIntegerField(

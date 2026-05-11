@@ -14,18 +14,19 @@ from screens.views import view_unconfigured
 
 def _display_context(entity):
     """Screensaver/pagination context for a Building, Room or RoomGroup."""
-    context = {"page_hold_seconds": entity.pagination_duration_seconds}
+    context = {
+        "page_hold_seconds": entity.pagination_duration_seconds,
+        "page_reload_seconds": 300,
+    }
     if entity.screensaver_enabled:
         context.update({
             "screensaver_src": static("room_schedules/screensaver.jpg"),
             "screensaver_seconds": entity.screensaver_duration_seconds,
-            "page_reload_seconds": entity.content_duration_seconds,
         })
     else:
         context.update({
             "screensaver_src": "",
             "screensaver_seconds": 0,
-            "page_reload_seconds": 300,
         })
     return context
 

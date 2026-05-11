@@ -66,7 +66,6 @@ class BuildingAdmin(ModelAdmin):
         ('Screensaver', {
             'fields': (
                 'screensaver_enabled',
-                'content_duration_seconds',
                 'screensaver_duration_seconds',
             ),
         }),
@@ -114,7 +113,6 @@ class RoomAdmin(ModelAdmin):
         ('Screensaver', {
             'fields': (
                 'screensaver_enabled',
-                'content_duration_seconds',
                 'screensaver_duration_seconds',
             ),
         }),
@@ -375,7 +373,6 @@ class RoomGroupAdmin(ModelAdmin):
         ('Screensaver', {
             'fields': (
                 'screensaver_enabled',
-                'content_duration_seconds',
                 'screensaver_duration_seconds',
             ),
         }),
