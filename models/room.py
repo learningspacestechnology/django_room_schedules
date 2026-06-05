@@ -16,7 +16,11 @@ class Room(models.Model):
         help_text="Operator-facing label. Leave blank to follow the O365 name.",
     )
     building = models.ForeignKey(Building, on_delete=models.CASCADE)
-    o365_calendar_email = models.EmailField(unique=True, null=True, blank=True)
+    o365_calendar_email = models.EmailField(
+        unique=True, null=True, blank=True,
+        help_text="The room's O365 mailbox address. Set this to pull bookings from Outlook/O365; "
+                  "leave blank for a manually-managed room.",
+    )
     allow_booking = models.BooleanField(
         default=False,
         help_text="Allow adhoc bookings to be made from the display screen.",

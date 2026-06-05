@@ -17,7 +17,10 @@ class RoomGroup(models.Model):
     name = models.CharField(max_length=100)
     building = models.ForeignKey(Building, on_delete=models.CASCADE, related_name='room_groups')
     rooms = models.ManyToManyField(Room, related_name='groups', blank=True)
-    default_display = models.CharField(max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_GRID)
+    default_display = models.CharField(
+        max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_GRID,
+        help_text="Default view for screens showing this group: Grid (hour-by-hour timetable) or Foyer (summary list).",
+    )
     grid_start_hour = models.PositiveSmallIntegerField(
         default=8,
         validators=[MinValueValidator(0), MaxValueValidator(23)],
