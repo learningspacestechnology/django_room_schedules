@@ -98,6 +98,7 @@ class Building(models.Model):
                         'start_time': e['start_time'],
                         'end_time': e['end_time'],
                         'cancelled': e['cancelled'],
+                        'sensitivity': e.get('sensitivity', 'normal'),
                     },
                 )
                 o365_ids.append(ev.id)

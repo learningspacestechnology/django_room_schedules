@@ -14,6 +14,24 @@ class Event(models.Model):
     cancelled = models.BooleanField(
         default=False,
         help_text="Whether the booking is cancelled. Maintained automatically by the O365 sync.")
+    sensitivity = models.CharField(
+        max_length=20,
+        default="normal",
+        help_text="O365 sensitivity (normal/personal/private/confidential). "
+                  "Maintained automatically by the O365 sync.")
+
+    PRIVATE_SENSITIVITIES = {"private", "confidential"}
+
+    @property
+    def is_private(self):
+        return self.sensitivity in self.PRIVATE_SENSITIVITIES
+
+    @property
+    def display_title(self):
+        """Public-facing title: organiser name for private bookings, else the subject."""
+        if self.is_private:
+            return self.organiser or "Private booking"
+        return self.name
 
     def __str__(self):
         return "{}: {}".format(self.pk, self.name)

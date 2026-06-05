@@ -224,7 +224,7 @@
             <div class="col">
                 <div class="card">
                     <div class="card-body display-booking{% if event == current_event %} display-booking-large{% else %} display-muted{% endif %}">
-                        {{ event.name }}
+                        {{ event.display_title }}
                         <div class="display-right-stack">
                             <div>{{ event.start_time|date:"D j M" }} <span class="bi-calendar4-event" aria-hidden="true"></span></div>
                             <div>{{ event.start_time|time:"H:i" }} - {{ event.end_time|time:"H:i" }} <span class="bi-clock" aria-hidden="true"></span></div>

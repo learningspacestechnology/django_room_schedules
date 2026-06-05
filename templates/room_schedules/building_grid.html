@@ -38,7 +38,7 @@
                 <dd class="display-schedule-event{% if event == rs.current_event %} display-highlight{% endif %}"
                     style="--edgel-start-minutes:{{ event.grid_start_minutes }}; --edgel-end-minutes:{{ event.grid_end_minutes }};">
                     <span class="visually-hidden">{{ event.start_time|time:'H:i' }} – {{ event.end_time|time:'H:i' }}</span>
-                    {{ event.name }}
+                    {{ event.display_title }}
                 </dd>
                 {% empty %}
                 <dd class="display-schedule-comment">No bookings</dd>
