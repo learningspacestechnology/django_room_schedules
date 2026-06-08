@@ -286,22 +286,35 @@
     // ── Poll for booking changes ──
     var STATE_HASH_URL = "{% url 'room_schedule/room_state_hash' venue_id=room.building_id room_id=room.pk %}";
     var lastStateHash = null;
-    var hashPollFailures = 0;
+    var wasUnreachable = false;
+
+    // Reload only when the server is reachable, so patching never strands the
+    // display on an error page that has no polling JS to recover.
+    function safeReload() {
+        fetch(STATE_HASH_URL, { cache: 'no-store' })
+            .then(function(r) { if (r.ok) location.reload(); })
+            .catch(function() { /* server down — skip this reload */ });
+    }
 
     function pollStateHash() {
-        fetch(STATE_HASH_URL)
-            .then(function(r) { return r.json(); })
+        fetch(STATE_HASH_URL, { cache: 'no-store' })
+            .then(function(r) {
+                if (!r.ok) throw new Error('bad status');   // 500 during patching => treat as down
+                return r.json();
+            })
             .then(function(data) {
-                hashPollFailures = 0;
                 if (lastStateHash === null) {
                     lastStateHash = data.hash;
-                } else if (data.hash !== lastStateHash) {
+                } else if (data.hash !== lastStateHash || wasUnreachable) {
+                    // content changed, OR server just recovered (content may be stale) — safe: we have a 200
                     location.reload();
                 }
+                wasUnreachable = false;
             })
             .catch(function() {
-                hashPollFailures++;
-                if (hashPollFailures >= 5) location.reload();
+                // Server unreachable (patching). Keep current content, retry next tick.
+                // Never reload here — that would land on an error page.
+                wasUnreachable = true;
             });
     }
 
@@ -310,7 +323,8 @@
 
     {% if compact %}
     // ── Hard refresh every 5 minutes (compact mode — plugin AJAX reload disabled) ──
-    setTimeout(function() { location.reload(); }, 300000);
+    // Health-checked so a refresh never lands on an error page during patching.
+    setInterval(safeReload, 300000);
     {% endif %}
 
     // ── Reload at event boundaries so current/next status updates promptly ──
@@ -318,14 +332,14 @@
     // Current event ends — reload to show next state
     (function() {
         var ms = new Date("{{ current_event_end_iso }}").getTime() - Date.now();
-        if (ms > 0 && ms < 86400000) setTimeout(function() { location.reload(); }, ms + 2000);
+        if (ms > 0 && ms < 86400000) setTimeout(safeReload, ms + 2000);
     })();
     {% endif %}
     {% if next_event %}
     // Next event starts — reload to promote it to current
     (function() {
         var ms = new Date("{{ next_event_start_iso }}").getTime() - Date.now();
-        if (ms > 0 && ms < 86400000) setTimeout(function() { location.reload(); }, ms + 2000);
+        if (ms > 0 && ms < 86400000) setTimeout(safeReload, ms + 2000);
     })();
     {% endif %}
 </script>
