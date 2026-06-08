@@ -5,13 +5,16 @@ from django.db import models
 class IpAddress(models.Model):
     ip_address = models.GenericIPAddressField(unique=True, verbose_name="IP address")
     room = models.ForeignKey(
-        'Room', null=True, blank=True, on_delete=models.CASCADE, related_name='ip_addresses'
+        'Room', null=True, blank=True, on_delete=models.CASCADE, related_name='ip_addresses',
+        help_text="Set exactly one of room, building, or room group — this IP drives that one target's display."
     )
     building = models.ForeignKey(
-        'Building', null=True, blank=True, on_delete=models.CASCADE, related_name='ip_addresses'
+        'Building', null=True, blank=True, on_delete=models.CASCADE, related_name='ip_addresses',
+        help_text="Set exactly one of room, building, or room group — this IP drives that one target's display."
     )
     room_group = models.ForeignKey(
-        'RoomGroup', null=True, blank=True, on_delete=models.CASCADE, related_name='ip_addresses'
+        'RoomGroup', null=True, blank=True, on_delete=models.CASCADE, related_name='ip_addresses',
+        help_text="Set exactly one of room, building, or room group — this IP drives that one target's display."
     )
 
     class Meta:

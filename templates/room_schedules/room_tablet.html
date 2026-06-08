@@ -712,30 +712,39 @@
         // ── Poll for booking changes instead of full-page meta refresh ──
         const STATE_HASH_URL = "{% url 'room_schedule/room_state_hash' venue_id=room.venue_id room_id=room.pk %}";
         let lastStateHash = null;
-        let hashPollFailures = 0;
+        let wasUnreachable = false;
 
         function pollStateHash() {
-            fetch(STATE_HASH_URL)
-                .then(function(r) { return r.json(); })
+            fetch(STATE_HASH_URL, { cache: 'no-store' })
+                .then(function(r) {
+                    if (!r.ok) throw new Error('bad status');   // 500 during patching => treat as down
+                    return r.json();
+                })
                 .then(function(data) {
-                    hashPollFailures = 0;
                     if (lastStateHash === null) {
                         lastStateHash = data.hash;
-                    } else if (data.hash !== lastStateHash) {
+                    } else if (data.hash !== lastStateHash || wasUnreachable) {
+                        // content changed, OR server just recovered (content may be stale) — safe: we have a 200
                         location.reload();
                     }
+                    wasUnreachable = false;
                 })
                 .catch(function() {
-                    hashPollFailures++;
-                    // After 5 consecutive failures, do a full reload as fallback
-                    if (hashPollFailures >= 5) location.reload();
+                    // Server unreachable (patching). Keep current content, retry next tick.
+                    // Never reload here — that would land on an error page.
+                    wasUnreachable = true;
                 });
         }
 
         pollStateHash();
         setInterval(pollStateHash, 10000);
-        // Safety-net full reload every 5 minutes in case polling misses something
-        setTimeout(function() { location.reload(); }, 300000);
+        // Safety-net reload every 5 min — refreshes time-based current/next state.
+        // Only reloads when the server is reachable, so patching never strands the display.
+        setInterval(function() {
+            fetch(STATE_HASH_URL, { cache: 'no-store' })
+                .then(function(r) { if (r.ok) location.reload(); })
+                .catch(function() { /* server down — skip; try again in 5 min */ });
+        }, 300000);
 
         {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
         // ── Adhoc Booking ──

@@ -35,7 +35,7 @@
                         <div class="col">
                             <div class="card">
                                 <div class="card-body display-booking{% if event == rs.current_event %} display-booking-large{% else %} display-muted{% endif %}">
-                                    {{ event.name }}
+                                    {{ event.display_title }}
                                     <div class="display-right-stack">
                                         <div>
                                             {% if event.start_time.date == current_date %}Today{% else %}{{ event.start_time|date:"D j M" }}{% endif %}

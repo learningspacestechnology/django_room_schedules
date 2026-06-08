@@ -60,7 +60,7 @@ async def get_todays_events(room_email, limit=100):
     Pass `limit=1` to perform a cheap access-check probe.
 
     Returns a list of dicts:
-        {id, name, organiser, start_time, end_time, cancelled}
+        {id, name, organiser, start_time, end_time, cancelled, sensitivity}
     where start_time and end_time are timezone-aware UTC datetimes (Graph API's default).
     """
     now = datetime.now()
@@ -76,7 +76,7 @@ async def get_todays_events(room_email, limit=100):
     url = (
         f"{GRAPH_API}/users/{room_email}/calendarView"
         f"?startDateTime={start.isoformat()}&endDateTime={end.isoformat()}"
-        f"&$select=id,subject,organizer,start,end,isCancelled"
+        f"&$select=id,subject,organizer,start,end,isCancelled,sensitivity"
         f"&$top={limit}"
     )
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -102,6 +102,7 @@ async def get_todays_events(room_email, limit=100):
             "start_time": datetime.fromisoformat(item["start"]["dateTime"].rstrip("Z")).replace(tzinfo=timezone.utc),
             "end_time": datetime.fromisoformat(item["end"]["dateTime"].rstrip("Z")).replace(tzinfo=timezone.utc),
             "cancelled": item.get("isCancelled", False),
+            "sensitivity": item.get("sensitivity", "normal"),
         })
     return results
 

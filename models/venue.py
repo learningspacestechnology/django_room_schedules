@@ -15,7 +15,10 @@ class Building(models.Model):
     ]
 
     name = models.CharField(max_length=100)
-    default_display = models.CharField(max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_GRID)
+    default_display = models.CharField(
+        max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_GRID,
+        help_text="Default view for screens showing this building: Grid (hour-by-hour timetable) or Foyer (summary list).",
+    )
     grid_start_hour = models.PositiveSmallIntegerField(
         default=8,
         validators=[MinValueValidator(0), MaxValueValidator(23)],
@@ -95,6 +98,7 @@ class Building(models.Model):
                         'start_time': e['start_time'],
                         'end_time': e['end_time'],
                         'cancelled': e['cancelled'],
+                        'sensitivity': e.get('sensitivity', 'normal'),
                     },
                 )
                 o365_ids.append(ev.id)
