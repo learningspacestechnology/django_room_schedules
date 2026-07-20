@@ -218,7 +218,15 @@ def o365_unassigned_view(request):
     ]
 
     no_access_qs = list(O365Room.objects.filter(no_calendar_access=True).order_by('name'))
-    missing_qs = list(O365Room.objects.filter(missing_from_tenant=True).order_by('name'))
+    # Only surface missing rooms that currently back a real, imported Room.
+    # Mailboxes that were only ever seen in the tenant (never assigned) or whose
+    # Room has since been deleted are cleaned up during sync and don't belong here.
+    missing_qs = list(
+        O365Room.objects.filter(
+            missing_from_tenant=True,
+            email__in=assigned_emails,
+        ).order_by('name')
+    )
     for room in no_access_qs + missing_qs:
         room.assigned_room = assigned_by_email.get(room.email)
 
