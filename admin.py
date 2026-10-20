@@ -1,6 +1,7 @@
 from itertools import groupby
 
 from django.contrib import admin, messages
+from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
@@ -136,7 +137,13 @@ class RoomAdmin(ModelAdmin):
 # URLs resolve under /admin/room_schedules/ rather than /admin/room_schedules/room/)
 # ----------------------------------------------------------------------
 
+# The O365 pages move, assign and bulk-assign display rooms, so they ask for
+# what editing a room asks for. admin_view alone only checks for staff status.
+o365_permission_required = permission_required(
+    'room_schedules.change_room', raise_exception=True)
 
+
+@o365_permission_required
 def o365_sync_now_view(request):
     referer = request.META.get('HTTP_REFERER') or reverse('admin:room_schedules_o365_unassigned')
     if request.method != 'POST':
@@ -149,6 +156,7 @@ def o365_sync_now_view(request):
     return redirect(referer)
 
 
+@o365_permission_required
 def o365_assigned_view(request):
     if request.method == 'POST':
         action_name = request.POST.get('action')
@@ -196,6 +204,7 @@ def _assigned_room_by_email():
     return mapping
 
 
+@o365_permission_required
 def o365_unassigned_view(request):
     if request.method == 'POST':
         action_name = request.POST.get('action')
