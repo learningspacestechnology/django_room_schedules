@@ -52,8 +52,8 @@ def auto_route(request):
             .first()
         )
         if ip_obj and ip_obj.room:
-            room = ip_obj.room
-            return redirect('room_schedule/room', venue_id=room.building_id, room_id=room.pk)
+            # Follows the room's chosen layout (Standard / Screen / Tablet).
+            return redirect(ip_obj.room.get_absolute_url())
         if ip_obj and ip_obj.building:
             building = ip_obj.building
             if building.default_display == Building.DISPLAY_FOYER:
@@ -409,6 +409,21 @@ def show_room(request, venue_id, room_id):
     else:
         context['compact'] = _is_legacy_browser(request.META.get('HTTP_USER_AGENT', ''))
     return render(request, "room_schedules/room_screen_uoe.html", context)
+
+
+def _show_room_banner(request, room_id, template):
+    """The status-banner layouts. Unlike Standard they take no screensaver,
+    pagination or compact settings, so the room context is all they need."""
+    room = get_object_or_404(Room.objects.select_related('building'), pk=room_id)
+    return render(request, template, _get_room_display_context(room))
+
+
+def show_room_screen(request, venue_id, room_id):
+    return _show_room_banner(request, room_id, "room_schedules/room_screen.html")
+
+
+def show_room_tablet(request, venue_id, room_id):
+    return _show_room_banner(request, room_id, "room_schedules/room_tablet.html")
 
 
 def css_diagnostic(request):

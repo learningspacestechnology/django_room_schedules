@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import action
 
@@ -43,7 +43,7 @@ class RoomGroupIpAddressInline(IpAddressInline):
 class RoomInline(TabularInline):
     model = Room
     extra = 0
-    fields = ('name', 'o365_calendar_email', 'allow_booking')
+    fields = ('name', 'o365_calendar_email', 'allow_booking', 'default_display')
 
 
 class RoomGroupInline(TabularInline):
@@ -105,17 +105,18 @@ class BuildingAdmin(ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'display_name', 'building', 'o365_calendar_email', 'allow_booking', 'screen_link')
+    list_display = ('id', 'name', 'display_name', 'building', 'o365_calendar_email', 'allow_booking',
+                    'default_display', 'display_links')
     list_display_links = ('id', 'name')
     search_fields = ('name', 'display_name', 'building__name')
-    list_filter = ('building', 'groups', 'screensaver_enabled')
+    list_filter = ('building', 'groups', 'default_display', 'screensaver_enabled')
     list_select_related = ('building',)
     inlines = [RoomIpAddressInline]
     fieldsets = (
         (None, {
             'fields': ('name', 'display_name', 'building', 'o365_calendar_email', 'allow_booking'),
         }),
-        ('Display', {'fields': ('pagination_duration_seconds',)}),
+        ('Display', {'fields': ('default_display', 'pagination_duration_seconds')}),
         ('Screensaver', {
             'fields': (
                 'screensaver_enabled',
@@ -124,12 +125,26 @@ class RoomAdmin(ModelAdmin):
         }),
     )
 
-    def screen_link(self, obj):
+    # One badge per layout, in the colours the building/group lists use, so any
+    # layout can be previewed regardless of which one the room is set to.
+    DISPLAY_BADGE_CLASSES = {
+        Room.DISPLAY_STANDARD: 'bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-400',
+        Room.DISPLAY_SCREEN: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+        Room.DISPLAY_TABLET: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
+    }
+
+    def display_links(self, obj):
         return format_html(
-            '<a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-400" href="/event_schedules/{}/{}">Screen</a>',
-            obj.building_id, obj.id,
+            '<div class="flex flex-wrap gap-1">{}</div>',
+            format_html_join('', (
+                '<a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default '
+                'text-[11px] uppercase whitespace-nowrap {}" href="{}">{}</a>'
+            ), (
+                (self.DISPLAY_BADGE_CLASSES[value], obj.display_url(value), label)
+                for value, label in Room.DISPLAY_CHOICES
+            )),
         )
-    screen_link.short_description = 'Screen Link'
+    display_links.short_description = 'Open display'
 
 
 # ----------------------------------------------------------------------
