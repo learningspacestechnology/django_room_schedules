@@ -11,6 +11,11 @@
     <link rel="stylesheet" type="text/css" href="{% static 'room_schedules/edgel/css/edgel-blue-university.min.css' %}">
     <style>
         html, body { height: 100%; margin: 0; overflow: hidden; }
+
+        /* EdGEL's .card sets break-word, which splits words mid-way in short
+           bookings ("Tutoria / l 4B"). Wrap whole words; the box's own
+           overflow: hidden cuts off a word too long to fit. */
+        .display-schedule-event { overflow-wrap: normal; }
     </style>
 </head>
 <body>
@@ -54,8 +59,6 @@
     </footer>
 
 </div>
-
-<div class="modal hero-bg" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"><div class="modal-dialog"></div></div>
 
 </body>
 </html>

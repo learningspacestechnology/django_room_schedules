@@ -86,6 +86,27 @@ class RoomLayoutTests(TestCase):
                 self.assertContains(response, "Alice Smith")
                 self.assertContains(response, "Open Seminar")
 
+    def test_banner_progress_bar_follows_the_status(self):
+        # Busy Soon used to keep the Available bar colour under its amber banner.
+        now = timezone.now()
+        cases = (
+            ("available", None, "available-bar"),
+            ("busy soon", (10, 70), "warning-bar"),
+            ("in use", (-10, 50), "in-use-bar"),
+        )
+        for state, offsets, bar in cases:
+            Event.objects.filter(room=self.room).delete()
+            if offsets:
+                Event.objects.create(
+                    name="Tutorial", organiser="S. Mackenzie", room=self.room,
+                    start_time=now + datetime.timedelta(minutes=offsets[0]),
+                    end_time=now + datetime.timedelta(minutes=offsets[1]),
+                )
+            for layout in (Room.DISPLAY_SCREEN, Room.DISPLAY_TABLET):
+                with self.subTest(state=state, layout=layout):
+                    self.assertContains(
+                        self._get(layout), 'class="progress-bar {}"'.format(bar))
+
     def test_device_is_sent_to_the_rooms_chosen_layout(self):
         auto_route = reverse("room_schedule/auto_route")
         for layout in LAYOUT_TEMPLATES:

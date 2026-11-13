@@ -11,6 +11,12 @@
     <link rel="stylesheet" type="text/css" href="{% static 'room_schedules/edgel/css/edgel-blue-university.min.css' %}">
     <style>
         html, body { height: 100%; margin: 0; overflow: hidden; }
+
+        /* EdGEL pages through the rooms but leaves the top of the next one
+           showing, cut off, above the footer. The script at the end of the
+           page marks such a room so it is hidden until its page comes up. */
+        .display-page { transition: opacity 0.2s ease; }
+        .display-page.is-cut-off { opacity: 0; }
     </style>
 </head>
 <body>
@@ -37,10 +43,12 @@
                                 <div class="card-body display-booking{% if event == rs.current_event %} display-booking-large{% else %} display-muted{% endif %}">
                                     {{ event.display_title }}
                                     <div class="display-right-stack">
+                                        {% if not event.on_display_day %}
                                         <div>
-                                            {% if event.start_time.date == current_date %}Today{% else %}{{ event.start_time|date:"D j M" }}{% endif %}
+                                            {{ event.start_time|date:"D j M" }}
                                             <span class="bi-calendar4-event" aria-hidden="true"></span>
                                         </div>
+                                        {% endif %}
                                         <div>
                                             {{ event.start_time|time:"H:i" }} - {{ event.end_time|time:"H:i" }}
                                             <span class="bi-clock" aria-hidden="true"></span>
@@ -52,13 +60,7 @@
                     {% empty %}
                         <div class="col">
                             <div class="card">
-                                <div class="card-body display-booking display-muted">
-                                    No bookings
-                                    <div class="display-right-stack">
-                                        <div><span class="bi-calendar4-event" aria-hidden="true"></span></div>
-                                        <div><span class="bi-clock" aria-hidden="true"></span></div>
-                                    </div>
-                                </div>
+                                <div class="card-body display-booking display-muted">No bookings</div>
                             </div>
                         </div>
                     {% endfor %}
@@ -73,7 +75,35 @@
 
 </div>
 
-<div class="modal hero-bg" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"><div class="modal-dialog"></div></div>
+<script>
+    // Hide a room that starts on the current page but doesn't fit on it.
+    // EdGEL's bundle is left untouched, so this only watches: it re-checks
+    // whenever the list scrolls (EdGEL's paging), the window resizes, or
+    // EdGEL swaps in refreshed content.
+    (function () {
+        function hideCutOff() {
+            var scroller = document.querySelector('[data-provide="uoe-display"]');
+            if (!scroller) return;
+            var view = scroller.getBoundingClientRect();
+            var rooms = scroller.querySelectorAll('.display-page');
+            for (var i = 0; i < rooms.length; i++) {
+                var r = rooms[i].getBoundingClientRect();
+                // A room taller than the screen starts its own page, so one
+                // that begins at the top is always shown.
+                var cutOff = r.top > view.top + 1 && r.bottom > view.bottom + 1;
+                rooms[i].classList.toggle('is-cut-off', cutOff);
+            }
+        }
+
+        document.addEventListener('scroll', hideCutOff, true);  // element scrolls don't bubble
+        window.addEventListener('resize', hideCutOff);
+        window.addEventListener('load', hideCutOff);
+        if (document.fonts) document.fonts.ready.then(hideCutOff);
+        var card = document.querySelector('.card-display');
+        if (card) new MutationObserver(hideCutOff).observe(card, { childList: true });
+        hideCutOff();
+    })();
+</script>
 
 </body>
 </html>
