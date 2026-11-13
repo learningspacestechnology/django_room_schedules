@@ -5,6 +5,22 @@ from room_schedules.models import Building
 
 
 class Room(models.Model):
+    DISPLAY_STANDARD = 'standard'
+    DISPLAY_SCREEN = 'screen'
+    DISPLAY_TABLET = 'tablet'
+    DISPLAY_CHOICES = [
+        (DISPLAY_STANDARD, 'Standard'),
+        (DISPLAY_SCREEN, 'Screen'),
+        (DISPLAY_TABLET, 'Tablet'),
+    ]
+    # URL name each layout is served at. An unrecognised value falls back to
+    # Standard rather than failing, so a display never breaks on bad data.
+    DISPLAY_URL_NAMES = {
+        DISPLAY_STANDARD: 'room_schedule/room',
+        DISPLAY_SCREEN: 'room_schedule/room_screen',
+        DISPLAY_TABLET: 'room_schedule/room_tablet',
+    }
+
     name = models.CharField(
         max_length=200,
         help_text="Canonical O365 displayName. Auto-refreshed by the daily sync for O365-backed rooms.",
@@ -24,6 +40,15 @@ class Room(models.Model):
     allow_booking = models.BooleanField(
         default=False,
         help_text="Allow adhoc bookings to be made from the display screen.",
+    )
+    default_display = models.CharField(
+        max_length=10, choices=DISPLAY_CHOICES, default=DISPLAY_STANDARD,
+        help_text=(
+            "Layout a device registered to this room is sent to: Standard (list of bookings), "
+            "Screen (large status banner with countdown, fills a widescreen display) or "
+            "Tablet (the same banner laid out for a 1280×800 tablet). "
+            "Pagination and screensaver settings apply to Standard only."
+        ),
     )
     pagination_duration_seconds = models.PositiveIntegerField(
         default=60,
@@ -66,7 +91,12 @@ class Room(models.Model):
         return "{}: {}".format(self.pk, self.label)
 
     def get_absolute_url(self):
-        return reverse('room_schedule/room', args=[str(self.building_id), str(self.id)])
+        """URL of the room's chosen layout — what a device registered to it shows."""
+        return self.display_url(self.default_display)
+
+    def display_url(self, display):
+        url_name = self.DISPLAY_URL_NAMES.get(display, self.DISPLAY_URL_NAMES[self.DISPLAY_STANDARD])
+        return reverse(url_name, args=[str(self.building_id), str(self.id)])
 
     def move_to_building(self, new_building):
         """Move this room to new_building; drop memberships in any RoomGroup

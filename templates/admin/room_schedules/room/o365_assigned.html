@@ -48,7 +48,7 @@
                                         <td class="border-b border-base-200 px-3 py-2 lg:border-b-0 lg:border-t dark:border-base-800">
                                             <div class="flex gap-2">
                                                 <a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-400"
-                                                   href="/event_schedules/{{ room.building_id }}/{{ room.id }}">Screen</a>
+                                                   href="{{ room.get_absolute_url }}">Screen</a>
                                                 <a class="inline-block font-semibold h-6 leading-6 px-2 rounded-default text-[11px] uppercase whitespace-nowrap bg-base-100 text-font-default-light dark:bg-base-800 dark:text-font-default-dark"
                                                    href="{% url 'admin:room_schedules_room_change' room.id %}">Edit</a>
                                             </div>

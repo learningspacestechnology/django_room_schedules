@@ -441,7 +441,7 @@
             <img src="{% static 'room_schedules/logo.png' %}" alt="Logo">
         </div>
         <div class="header-centre">
-            <div class="venue-name">{{ room.venue.name }}</div>
+            <div class="venue-name">{{ room.building.name }}</div>
             <div class="room-name">{{ room.label }}</div>
             {% if is_available %}
                 {% if is_warning %}
@@ -458,8 +458,8 @@
                 {% endif %}
             {% else %}
                 <div class="status-label">In Use</div>
-                <div class="header_event_name">{{ current_event.name }}</div>
-                <div class="header_event_organiser">{{ current_event.organiser }}</div>
+                <div class="header_event_name">{{ current_event.display_title }}</div>
+                {% if not current_event.is_private %}<div class="header_event_organiser">{{ current_event.organiser }}</div>{% endif %}
                 <div class="countdown-primary" id="countdownPrimary">
                     Until {{ current_event.end_time|time:'H:i' }}
                 </div>
@@ -482,8 +482,8 @@
         <div class="next-event-panel">
             <div class="label">{% if is_available %}Next Booking{% else %}Up Next{% endif %}</div>
             {% if next_event %}
-                <div class="event-name">{{ next_event.name }}</div>
-                <div class="event-organiser">{{ next_event.organiser }}</div>
+                <div class="event-name">{{ next_event.display_title }}</div>
+                {% if not next_event.is_private %}<div class="event-organiser">{{ next_event.organiser }}</div>{% endif %}
                 <div class="event-time">{{ next_event.start_time|time:'H:i' }} – {{ next_event.end_time|time:'H:i' }}</div>
                 <div class="countdown-secondary" id="countdownSecondary">
                     Starts in …
@@ -491,7 +491,7 @@
             {% else %}
                 <div class="nothing">No more bookings today</div>
             {% endif %}
-            {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+            {% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
             <button class="book-btn" id="bookBtn" onclick="openBookingModal()">Book Now</button>
             {% endif %}
         </div>
@@ -504,8 +504,8 @@
                 <div class="schedule-item {% if event == current_event %}is-current{% endif %}">
                     <div class="time">{{ event.start_time|time:'H:i' }} – {{ event.end_time|time:'H:i' }}</div>
                     <div class="details">
-                        <div class="name">{{ event.name }}</div>
-                        <div class="organiser">{{ event.organiser }}</div>
+                        <div class="name">{{ event.display_title }}</div>
+                        {% if not event.is_private %}<div class="organiser">{{ event.organiser }}</div>{% endif %}
                     </div>
                 </div>
             {% endfor %}
@@ -513,7 +513,7 @@
 
     </div>
 
-{% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+{% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
 <div id="bookingOverlay" style="display:none;" class="booking-overlay"></div>
 <div id="bookingModal" style="display:none;" class="booking-modal">
     <div class="booking-modal-inner">
@@ -639,7 +639,7 @@
     setInterval(tick, 1000);
 
     // ── Poll for booking changes instead of full-page meta refresh ──
-    const STATE_HASH_URL = "{% url 'room_schedule/room_state_hash' venue_id=room.venue_id room_id=room.pk %}";
+    const STATE_HASH_URL = "{% url 'room_schedule/room_state_hash' venue_id=room.building_id room_id=room.pk %}";
     let lastStateHash = null;
     let wasUnreachable = false;
 
@@ -675,9 +675,9 @@
             .catch(function() { /* server down — skip; try again in 5 min */ });
     }, 300000);
 
-    {% if is_available and not is_warning and room.o365_calendar_email and room.allow_tablet_booking %}
+    {% if is_available and not is_warning and room.o365_calendar_email and room.allow_booking %}
     // ── Adhoc Booking ──
-    const BOOK_URL = "{% url 'room_schedule/book_adhoc' venue_id=room.venue_id room_id=room.pk %}";
+    const BOOK_URL = "{% url 'room_schedule/book_adhoc' venue_id=room.building_id room_id=room.pk %}";
 
     let currentDurationMinutes = 15;
     let useUntilNext = false;
