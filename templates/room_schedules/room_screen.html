@@ -36,6 +36,15 @@
             font-style: normal;
             font-display: swap;
         }
+        /* EdGEL's heading serif, served from its bundle. Regular only. */
+        @font-face {
+            font-family: "Crimson Text";
+            src: url("{% static 'room_schedules/edgel/fonts/crimson-roman-all.woff2' %}") format("woff2"),
+                 url("{% static 'room_schedules/edgel/fonts/crimson-roman-all.woff' %}") format("woff");
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -53,43 +62,64 @@
             flex-direction: column;
         }
 
-        /* ── Header ── */
-        .header {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            padding: clamp(16px, 2vh, 32px) clamp(20px, 3vw, 48px);
-            transition: background-color 0.6s ease;
+        /* ── Top: navy masthead over the status banner, together 45vh ── */
+        .top {
+            display: flex;
+            flex-direction: column;
             flex-shrink: 0;
             min-height: 45vh;
+        }
+
+        .masthead {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: clamp(16px, 2vw, 32px);
+            padding: clamp(10px, 1.6vh, 20px) clamp(20px, 3vw, 48px);
+            background: var(--masthead-bg);
+            flex-shrink: 0;
+        }
+        .masthead-logo {
+            display: block;
+            height: clamp(44px, min(8.5vh, 6.5vw), 104px);
+            width: auto;
+        }
+
+        .live-clock {
+            font-size: clamp(36px, min(6.6vh, 5vw), 84px);
+            font-weight: 300;
+            line-height: 1;
+        }
+
+        /* ── Status banner ── */
+        .header {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(16px, 2vh, 32px) clamp(20px, 3vw, 48px);
+            transition: background-color 0.6s ease;
         }
         .header.available { background: var(--status-available); }
         .header.warning   { background: var(--status-warning); }
         .header.in-use    { background: var(--status-in-use); }
-
-        .header-left {
-            justify-self: start;
-        }
-        .header-left img {
-            height: clamp(60px, 10vh, 120px);
-            width: auto;
-        }
 
         .header-centre {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            width: 100%;
             overflow: hidden;
-            padding: 0 clamp(8px, 1vw, 24px);
         }
 
         .venue-name {
-            font-size: clamp(18px, 2.8vw, 36px);
-            font-weight: 300;
-            letter-spacing: 2px;
+            font-family: var(--font-heading);
+            font-size: clamp(22px, 3vw, 40px);
+            font-weight: 400;
+            letter-spacing: 0.5px;
             line-height: 1.2;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             text-align: center;
             white-space: nowrap;
             overflow: hidden;
@@ -98,10 +128,10 @@
         }
 
         .room-name {
-            font-size: clamp(28px, 4vw, 52px);
-            font-weight: 700;
-            letter-spacing: 1px;
-            line-height: 1.2;
+            font-family: var(--font-heading);
+            font-size: clamp(34px, 4.8vw, 64px);
+            font-weight: 400;
+            line-height: 1.1;
             margin-bottom: clamp(6px, 1vh, 12px);
             text-align: center;
             white-space: nowrap;
@@ -143,16 +173,6 @@
             text-align: center;
         }
 
-        .header-right {
-            justify-self: end;
-        }
-
-        .live-clock {
-            font-size: clamp(48px, 7.5vw, 96px);
-            font-weight: 300;
-            line-height: 1.2;
-        }
-
         /* ── Progress bar ── */
         .progress-container {
             width: 100%;
@@ -168,6 +188,7 @@
             transition: width 1s linear;
         }
         .progress-bar.available-bar { background: var(--progress-available); }
+        .progress-bar.warning-bar   { background: var(--progress-warning, var(--status-warning)); }
         .progress-bar.in-use-bar    { background: var(--progress-in-use); }
 
         /* ── Bottom section ── */
@@ -427,7 +448,7 @@
                 border-right: none;
                 border-bottom: 1px solid rgba(255,255,255,0.12);
             }
-            .header {
+            .top {
                 min-height: 35vh;
             }
         }
@@ -435,11 +456,16 @@
 </head>
 <body>
 
-    <!-- ── Header: logo | venue/room/status | clock ── -->
+    <div class="top">
+
+    <!-- ── Masthead: logo | clock ── -->
+    <header class="masthead">
+        <img class="masthead-logo" src="{% static 'room_schedules/logo.png' %}" alt="The University of Edinburgh">
+        <div class="live-clock" id="liveClock"></div>
+    </header>
+
+    <!-- ── Status banner: venue/room/status ── -->
     <div class="header {% if is_available %}{% if is_warning %}warning{% else %}available{% endif %}{% else %}in-use{% endif %}" id="statusBanner">
-        <div class="header-left">
-            <img src="{% static 'room_schedules/logo.png' %}" alt="Logo">
-        </div>
         <div class="header-centre">
             <div class="venue-name">{{ room.building.name }}</div>
             <div class="room-name">{{ room.label }}</div>
@@ -465,14 +491,13 @@
                 </div>
             {% endif %}
         </div>
-        <div class="header-right">
-            <div class="live-clock" id="liveClock"></div>
-        </div>
+    </div>
+
     </div>
 
     <!-- ── Progress bar ── -->
     <div class="progress-container">
-        <div class="progress-bar {% if is_available %}available-bar{% else %}in-use-bar{% endif %}" id="progressBar"></div>
+        <div class="progress-bar {% if not is_available %}in-use-bar{% elif is_warning %}warning-bar{% else %}available-bar{% endif %}" id="progressBar"></div>
     </div>
 
     <!-- ── Bottom section ── -->
@@ -557,13 +582,15 @@
     }
 
     // ── Format helpers ──
+    function plural(n, unit) { return n + " " + unit + (n === 1 ? "" : "s"); }
+
     function formatCountdown(ms) {
         if (ms <= 0) return "0 minutes";
         const totalMin = Math.ceil(ms / 60000);
-        if (totalMin < 60) return totalMin + " minutes";
+        if (totalMin < 60) return plural(totalMin, "minute");
         const h = Math.floor(totalMin / 60);
         const m = totalMin % 60;
-        return h + " hours " + (m > 0 ? m + " minutes" : "");
+        return plural(h, "hour") + (m > 0 ? " " + plural(m, "minute") : "");
     }
 
     function pad(n) { return n < 10 ? "0" + n : n; }

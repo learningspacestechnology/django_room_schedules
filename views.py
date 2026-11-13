@@ -120,20 +120,45 @@ def room_led_status(request, venue_id, room_id):
     return response
 
 
-def _get_rooms_display_context(rooms_qs, title, state_hash_url):
-    """Build template context for any multi-room display (building or group)."""
+def _display_day(moment):
+    """The day a display treats `moment` as part of.
+
+    A display day runs from HOUR_BREAK_POINT to HOUR_BREAK_POINT local time,
+    the same window the O365 sync fetches, so a booking at 01:00 still
+    belongs to the evening before.
+    """
+    return (timezone.localtime(moment) - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
+
+
+def _get_rooms_display_context(rooms_qs, title, state_hash_url, whole_day=False):
+    """Build template context for any multi-room display (building or group).
+
+    By default only bookings that haven't finished are included, which is
+    what the foyer lists. `whole_day` keeps the display day's finished
+    bookings too, so the grid reads as a timetable of the whole day.
+    """
     now = timezone.now()
     current_date = (now - datetime.timedelta(hours=HOUR_BREAK_POINT)).date()
+    display_day = _display_day(now)
+
+    if whole_day:
+        since = timezone.make_aware(
+            datetime.datetime.combine(display_day, datetime.time(HOUR_BREAK_POINT)))
+    else:
+        since = now
 
     rooms = list(rooms_qs.order_by('name'))
     room_ids = [r.pk for r in rooms]
     events = list(
         Event.objects.filter(
             room_id__in=room_ids,
-            end_time__gte=now,
+            end_time__gte=since,
             cancelled=False,
         ).select_related('room').order_by('start_time')
     )
+    for e in events:
+        # The foyer shows a date only for bookings that aren't today's.
+        e.on_display_day = _display_day(e.start_time) == display_day
 
     room_statuses = []
     for room in rooms:
@@ -171,19 +196,20 @@ def _get_rooms_display_context(rooms_qs, title, state_hash_url):
     }
 
 
-def _get_building_display_context(building):
+def _get_building_display_context(building, whole_day=False):
     from django.urls import reverse
     context = _get_rooms_display_context(
         building.room_set.all(),
         building.name,
         reverse('room_schedule/building_state_hash', args=[building.pk]),
+        whole_day=whole_day,
     )
     context['building'] = building
     context.update(_display_context(building))
     return context
 
 
-def _get_room_group_display_context(group):
+def _get_room_group_display_context(group, whole_day=False):
     from django.urls import reverse
     context = _get_rooms_display_context(
         group.rooms.all(),
@@ -192,6 +218,7 @@ def _get_room_group_display_context(group):
             'room_schedule/room_group_state_hash',
             args=[group.building_id, group.pk],
         ),
+        whole_day=whole_day,
     )
     context['building'] = group.building
     context['room_group'] = group
@@ -199,14 +226,31 @@ def _get_room_group_display_context(group):
     return context
 
 
-def _annotate_grid_offsets(room_statuses, start_hour, end_hour):
-    max_minutes = (end_hour - start_hour) * 60
+def _annotate_grid_offsets(room_statuses, start_hour, end_hour, day):
+    """Place each booking on the grid for `day`, in minutes from its first column.
+
+    Bookings wholly outside the grid's hours are dropped and ones crossing an
+    edge are cut off at it. Both ends must be clamped: an offset past either
+    edge makes CSS grid invent extra columns, or count lines from the far end,
+    and the booking is drawn in the wrong place or not at all.
+    """
+    midnight = timezone.make_aware(datetime.datetime.combine(day, datetime.time()))
+    # Added to midnight rather than built with time(hour), so end_hour may be 24.
+    grid_start = midnight + datetime.timedelta(hours=start_hour)
+    grid_end = midnight + datetime.timedelta(hours=end_hour)
+
     for rs in room_statuses:
+        placed = []
         for event in rs['events']:
-            st = timezone.localtime(event.start_time)
-            et = timezone.localtime(event.end_time)
-            event.grid_start_minutes = max(0, (st.hour - start_hour) * 60 + st.minute)
-            event.grid_end_minutes = min(max_minutes, (et.hour - start_hour) * 60 + et.minute)
+            if event.end_time <= grid_start or event.start_time >= grid_end:
+                continue
+            start = max(event.start_time, grid_start) - grid_start
+            end = min(event.end_time, grid_end) - grid_start
+            event.grid_start_minutes = int(start.total_seconds() // 60)
+            event.grid_end_minutes = max(
+                int(end.total_seconds() // 60), event.grid_start_minutes + 1)
+            placed.append(event)
+        rs['events'] = placed
 
 
 # State-hash polling for the building grid / foyer / room-group views is
@@ -236,11 +280,12 @@ def _events_state_hash(events_qs):
 
 def show_building_grid(request, venue_id):
     building = get_object_or_404(Building, pk=venue_id)
-    context = _get_building_display_context(building)
+    context = _get_building_display_context(building, whole_day=True)
 
     start_hour = building.grid_start_hour
     end_hour = building.grid_end_hour
-    _annotate_grid_offsets(context['room_statuses'], start_hour, end_hour)
+    _annotate_grid_offsets(
+        context['room_statuses'], start_hour, end_hour, _display_day(context['now']))
 
     context['start_hour'] = start_hour
     context['end_hour'] = end_hour
@@ -271,11 +316,12 @@ def building_state_hash(request, venue_id):
 
 def show_room_group_grid(request, venue_id, group_id):
     group = get_object_or_404(RoomGroup, pk=group_id, building_id=venue_id)
-    context = _get_room_group_display_context(group)
+    context = _get_room_group_display_context(group, whole_day=True)
 
     start_hour = group.grid_start_hour
     end_hour = group.grid_end_hour
-    _annotate_grid_offsets(context['room_statuses'], start_hour, end_hour)
+    _annotate_grid_offsets(
+        context['room_statuses'], start_hour, end_hour, _display_day(context['now']))
 
     context['start_hour'] = start_hour
     context['end_hour'] = end_hour

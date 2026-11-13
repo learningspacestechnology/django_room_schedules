@@ -1,27 +1,44 @@
-/* ── Brand palette — override these for other brands ── */
+/* ── Brand palette — override these for other brands ──
+ *
+ * The University of Edinburgh, after EdGEL (edgel-blue-university.css):
+ * navy #041E42 is EdGEL's --edgel-brand. Used by the Screen and Tablet
+ * layouts, together with logo.png (the University lockup, white).
+ *
+ * Every text colour here clears WCAG AA (4.5:1) against the surface it sits
+ * on: white on each --status-*, and the --panel-* text colours on --panel-bg.
+ * Check contrast again if you change one.
+ */
 :root {
-    --status-available: #2B9F5E;
-    --status-available-dark: #1F7A46;
-    --status-warning: #D4872E;
-    --status-in-use: #D14040;
+    /* Masthead strip holding the logo and clock */
+    --masthead-bg: #041E42;
 
-    --progress-track: #3A4556;
+    /* Status banner. White text sits on all three. */
+    --status-available: #1E7F49;
+    --status-available-dark: #16683A;
+    --status-warning: #B45A0A;
+    --status-in-use: #C42F2F;
+
+    --progress-track: #1B3560;
     --progress-available: #3DBB78;
-    --progress-in-use: #E8B62C;
-    --progress-default: #2CA7A0;
+    --progress-warning: #F08A24;
+    --progress-in-use: #F2B33D;
+    --progress-default: #45C4B8;
 
-    --panel-bg: #1E2D3D;
-    --panel-label: #6F8898;
-    --panel-accent: #E8A825;
-    --panel-info: #4A9AD8;
-    --panel-active: #2CA7A0;
-    --panel-muted: #A8B8C4;
+    --panel-bg: #041E42;
+    --panel-label: #8DA2C0;
+    --panel-accent: #F2B33D;
+    --panel-info: #6FB5EE;
+    --panel-active: #45C4B8;
+    --panel-muted: #B9C6D9;
 
-    --modal-bg: #162230;
-    --modal-btn: #2E4052;
-    --modal-btn-active: #3D556A;
-    --modal-border: #4A607A;
-    --modal-muted: #8098AA;
+    --modal-bg: #021530;
+    --modal-btn: #13305A;
+    --modal-btn-active: #1F4170;
+    --modal-border: #3A5A85;
+    --modal-muted: #A3B4CC;
 
-    --color-error: #E25555;
+    --color-error: #FF8A8A;
+
+    /* Room and building names. Regular is the only weight EdGEL ships. */
+    --font-heading: "Crimson Text", Georgia, "Times New Roman", serif;
 }

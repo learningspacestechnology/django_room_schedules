@@ -37,6 +37,16 @@
             font-display: swap;
         }
 
+        /* EdGEL's heading serif, served from its bundle. Regular only. */
+        @font-face {
+            font-family: "Crimson Text";
+            src: url("{% static 'room_schedules/edgel/fonts/crimson-roman-all.woff2' %}") format("woff2"),
+                 url("{% static 'room_schedules/edgel/fonts/crimson-roman-all.woff' %}") format("woff");
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         html, body {
@@ -59,8 +69,12 @@
             flex-direction: column;
             pointer-events: none;
         }
+        .bg-bands .bg-masthead {
+            flex: 0 0 9vh;
+            background: var(--masthead-bg);
+        }
         .bg-bands .bg-header {
-            flex: 0 0 45vh;
+            flex: 0 0 36vh;
             transition: background-color 0.6s ease;
         }
         .bg-bands .bg-header.available { background: var(--status-available); }
@@ -96,15 +110,36 @@
             z-index: 10;
         }
 
-        /* ── Header (3-column: logo | venue/room/status | clock) ── */
+        /* ── Masthead (logo | clock) + status banner: 72 + 288 = 360px ── */
+        .masthead {
+            width: 100%;
+            height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            background: var(--masthead-bg);
+            flex-shrink: 0;
+        }
+        .masthead-logo {
+            display: block;
+            height: 56px;
+            width: auto;
+        }
+
+        .live-clock {
+            font-size: 56px;
+            font-weight: 300;
+            line-height: 1;
+        }
+
         .header {
             width: 100%;
-            height: 360px;
-            position: relative;
+            height: 288px;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0 40px;
+            padding: 12px 40px;
             transition: background-color 0.6s ease;
             flex-shrink: 0;
         }
@@ -112,35 +147,23 @@
         .header.warning  { background: var(--status-warning); }
         .header.in-use    { background: var(--status-in-use); }
 
-        /* Left column: logo */
-        .header-left {
-            position: absolute;
-            left: 40px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        .header-left img {
-            height: 120px;
-            width: auto;
-        }
-
-        /* Centre column: venue, room, status, countdown */
+        /* Venue, room, status, countdown */
         .header-centre {
-            flex: 1 1 auto;
+            width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 0 24px;
             overflow: hidden;
         }
 
         .venue-name {
-            font-size: 36px;
-            font-weight: 300;
-            letter-spacing: 2px;
+            font-family: var(--font-heading);
+            font-size: 30px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
             line-height: 1.2;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             text-align: center;
             white-space: nowrap;
             overflow: hidden;
@@ -149,11 +172,11 @@
         }
 
         .room-name {
-            font-size: 52px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            line-height: 1.2;
-            margin-bottom: 12px;
+            font-family: var(--font-heading);
+            font-size: 48px;
+            font-weight: 400;
+            line-height: 1.1;
+            margin-bottom: 6px;
             text-align: center;
             white-space: nowrap;
             overflow: hidden;
@@ -162,51 +185,36 @@
         }
 
         .status-label {
-            font-size: 64px;
+            font-size: 54px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 6px;
-            line-height: 1.2;
+            letter-spacing: 5px;
+            line-height: 1.15;
             text-align: center;
         }
 
         .header_event_name {
-            font-size: 30px;
+            font-size: 24px;
             font-weight: 400;
-            line-height: 1.3;
-            margin-top: 8px;
+            line-height: 1.25;
+            margin-top: 4px;
             text-align: center;
         }
 
         .header_event_organiser {
-            font-size: 30px;
+            font-size: 24px;
             font-weight: 400;
-            line-height: 1.3;
-            margin-top: 8px;
+            line-height: 1.25;
+            margin-top: 4px;
             text-align: center;
         }
 
         .countdown-primary {
-            font-size: 30px;
+            font-size: 24px;
             font-weight: 400;
-            line-height: 1.3;
-            margin-top: 8px;
+            line-height: 1.25;
+            margin-top: 4px;
             text-align: center;
-        }
-
-        /* Right column: clock */
-        .header-right {
-            position: absolute;
-            right: 40px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .live-clock {
-            font-size: 96px;
-            font-weight: 300;
-            line-height: 1.2;
-            /* opacity: 0.85; */
         }
 
         /* ── Progress bar ── */
@@ -224,6 +232,7 @@
             transition: width 1s linear;
         }
         .progress-bar.available-bar { background: var(--progress-available); }
+        .progress-bar.warning-bar   { background: var(--progress-warning, var(--status-warning)); }
         .progress-bar.in-use-bar    { background: var(--progress-in-use); }
 
         /* ── Bottom section (800 - 360 - 12 = 428px) ── */
@@ -466,6 +475,7 @@
 
 <!-- Full-width colour bands — bleed header/progress/bottom colours to screen edges -->
 <div class="bg-bands">
+    <div class="bg-masthead"></div>
     <div class="bg-header {% if is_available %}{% if is_warning %}warning{% else %}available{% endif %}{% else %}in-use{% endif %}"></div>
     <div class="bg-progress {% if not is_available %}in-use{% elif next_event %}{% if is_warning %}warning{% else %}available{% endif %}{% endif %}"></div>
     <div class="bg-bottom"></div>
@@ -475,11 +485,14 @@
 
 <div id="app">
 
-    <!-- ── Header: logo | venue/room/status | clock ── -->
+    <!-- ── Masthead: logo | clock ── -->
+    <header class="masthead">
+        <img class="masthead-logo" src="{% static 'room_schedules/logo.png' %}" alt="The University of Edinburgh">
+        <div class="live-clock" id="liveClock"></div>
+    </header>
+
+    <!-- ── Status banner: venue/room/status ── -->
     <div class="header {% if is_available %}{% if is_warning %}warning{% else %}available{% endif %}{% else %}in-use{% endif %}" id="statusBanner">
-        <div class="header-left">
-            <img src="{% static 'room_schedules/logo.png' %}" alt="Edinburgh University Students' Association">
-        </div>
         <div class="header-centre">
             <div class="venue-name">{{ room.building.name }}</div>
             <div class="room-name">{{ room.label }}</div>
@@ -505,14 +518,11 @@
                 </div>
             {% endif %}
         </div>
-        <div class="header-right">
-            <div class="live-clock" id="liveClock"></div>
-        </div>
     </div>
 
     <!-- ── Progress bar (background from .bg-bands, fill rendered here inside scaled #app) ── -->
     <div class="progress-container">
-        <div class="progress-bar {% if is_available %}available-bar{% else %}in-use-bar{% endif %}" id="progressBar"></div>
+        <div class="progress-bar {% if not is_available %}in-use-bar{% elif is_warning %}warning-bar{% else %}available-bar{% endif %}" id="progressBar"></div>
     </div>
 
     <!-- ── Bottom section ── -->
@@ -593,8 +603,10 @@
             if (modalEl) modalEl.style.transform = "scale(" + scale + ")";
             // Read actual rendered heights from the transformed #app elements so
             // bg-bands bands align pixel-perfectly (avoids fractional-px rounding drift)
+            const bgMasthead = document.querySelector('.bg-masthead');
             const bgHeader   = document.querySelector('.bg-header');
             const bgProgress = document.querySelector('.bg-progress');
+            if (bgMasthead) bgMasthead.style.flexBasis = appEl.querySelector('.masthead').getBoundingClientRect().height + "px";
             if (bgHeader)   bgHeader.style.flexBasis   = appEl.querySelector('.header').getBoundingClientRect().height + "px";
             if (bgProgress) bgProgress.style.flexBasis = appEl.querySelector('.progress-container').getBoundingClientRect().height + "px";
         }
@@ -621,13 +633,15 @@
         }
 
         // ── Format helpers ──
+        function plural(n, unit) { return n + " " + unit + (n === 1 ? "" : "s"); }
+
         function formatCountdown(ms) {
             if (ms <= 0) return "0 minutes";
             const totalMin = Math.ceil(ms / 60000);
-            if (totalMin < 60) return totalMin + " minutes";
+            if (totalMin < 60) return plural(totalMin, "minute");
             const h = Math.floor(totalMin / 60);
             const m = totalMin % 60;
-            return h + " hours " + (m > 0 ? m + " minutes" : "");
+            return plural(h, "hour") + (m > 0 ? " " + plural(m, "minute") : "");
         }
 
         function pad(n) { return n < 10 ? "0" + n : n; }
