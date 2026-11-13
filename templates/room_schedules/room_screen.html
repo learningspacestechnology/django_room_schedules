@@ -5,47 +5,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ room.label }}</title>
+    <link rel="stylesheet" href="{% static 'room_schedules/edgel-fonts.css' %}">
     <link rel="stylesheet" href="{% static 'room_schedules/brand.css' %}">
     <style>
-
-        @font-face {
-            font-family: "Source Sans Pro";
-            src: url("{% static 'room_schedules/fonts/SourceSansPro-Light.ttf' %}") format("truetype");
-            font-weight: 300;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: "Source Sans Pro";
-            src: url("{% static 'room_schedules/fonts/SourceSansPro-Regular.ttf' %}") format("truetype");
-            font-weight: 400;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: "Source Sans Pro";
-            src: url("{% static 'room_schedules/fonts/SourceSansPro-SemiBold.ttf' %}") format("truetype");
-            font-weight: 600;
-            font-style: normal;
-            font-display: swap;
-        }
-        @font-face {
-            font-family: "Source Sans Pro";
-            src: url("{% static 'room_schedules/fonts/SourceSansPro-Bold.ttf' %}") format("truetype");
-            font-weight: 700;
-            font-style: normal;
-            font-display: swap;
-        }
-        /* EdGEL's heading serif, served from its bundle. Regular only. */
-        @font-face {
-            font-family: "Crimson Text";
-            src: url("{% static 'room_schedules/edgel/fonts/crimson-roman-all.woff2' %}") format("woff2"),
-                 url("{% static 'room_schedules/edgel/fonts/crimson-roman-all.woff' %}") format("woff");
-            font-weight: 400;
-            font-style: normal;
-            font-display: swap;
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         html, body {
@@ -56,7 +18,7 @@
         }
 
         body {
-            font-family: "Source Sans Pro", "Calibri", sans-serif;
+            font-family: "Source Sans Pro", sans-serif;
             color: #fff;
             display: flex;
             flex-direction: column;
@@ -85,10 +47,23 @@
             width: auto;
         }
 
+        /* Clock and date: EdGEL's .display-clock and .display-small, value for
+           value, so they match the grid and foyer headers. */
         .live-clock {
-            font-size: clamp(36px, min(6.6vh, 5vw), 84px);
-            font-weight: 300;
-            line-height: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: center;
+            font-size: calc(1.53607rem + 0.84857vw);
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        @media (min-width: 1600px) {
+            .live-clock { font-size: 2.38464rem; }
+        }
+        .live-date {
+            font-size: 50%;
+            font-weight: 400;
         }
 
         /* ── Status banner ── */
@@ -114,12 +89,11 @@
         }
 
         .venue-name {
-            font-family: var(--font-heading);
-            font-size: clamp(22px, 3vw, 40px);
-            font-weight: 400;
-            letter-spacing: 0.5px;
+            font-size: clamp(18px, 2.8vw, 36px);
+            font-weight: 300;
+            letter-spacing: 2px;
             line-height: 1.2;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
             text-align: center;
             white-space: nowrap;
             overflow: hidden;
@@ -128,10 +102,10 @@
         }
 
         .room-name {
-            font-family: var(--font-heading);
-            font-size: clamp(34px, 4.8vw, 64px);
-            font-weight: 400;
-            line-height: 1.1;
+            font-size: clamp(28px, 4vw, 52px);
+            font-weight: 700;
+            letter-spacing: 1px;
+            line-height: 1.2;
             margin-bottom: clamp(6px, 1vh, 12px);
             text-align: center;
             white-space: nowrap;
@@ -354,7 +328,7 @@
             padding: clamp(32px, 4vh, 48px) clamp(36px, 4vw, 56px);
             text-align: center;
             min-width: min(520px, 90vw);
-            font-family: "Source Sans Pro", "Calibri", sans-serif;
+            font-family: "Source Sans Pro", sans-serif;
         }
         .booking-title {
             font-size: clamp(28px, 3.2vw, 40px);
@@ -461,7 +435,10 @@
     <!-- ── Masthead: logo | clock ── -->
     <header class="masthead">
         <img class="masthead-logo" src="{% static 'room_schedules/logo.png' %}" alt="The University of Edinburgh">
-        <div class="live-clock" id="liveClock"></div>
+        <div class="live-clock">
+            <div id="liveClock"></div>
+            <div class="live-date" id="liveDate"></div>
+        </div>
     </header>
 
     <!-- ── Status banner: venue/room/status ── -->
@@ -594,15 +571,23 @@
     }
 
     function pad(n) { return n < 10 ? "0" + n : n; }
+    // EdGEL's date format for .display-clock: "Fri 13 Nov", day always two digits.
+    const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    function formatDate(d) { return DAYS[d.getDay()] + " " + pad(d.getDate()) + " " + MONTHS[d.getMonth()]; }
 
     // ── Tick every second ──
     function tick() {
         const now = new Date(serverTime());
 
-        // Live clock
+        // Live clock (HH:MM) and date, as EdGEL shows them
         const clockEl = document.getElementById("liveClock");
         if (clockEl) {
             clockEl.textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
+        }
+        const dateEl = document.getElementById("liveDate");
+        if (dateEl) {
+            dateEl.textContent = formatDate(now);
         }
 
         const primaryEl   = document.getElementById("countdownPrimary");
