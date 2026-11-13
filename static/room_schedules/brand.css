@@ -38,7 +38,4 @@
     --modal-muted: #A3B4CC;
 
     --color-error: #FF8A8A;
-
-    /* Room and building names. Regular is the only weight EdGEL ships. */
-    --font-heading: "Crimson Text", Georgia, "Times New Roman", serif;
 }
